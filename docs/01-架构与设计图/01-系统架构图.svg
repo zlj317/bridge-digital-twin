@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#00E5FF"/></marker>
+    <marker id="ar2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#F2C14E"/></marker>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00E5FF" stop-opacity=".22"/><stop offset="1" stop-color="#00E5FF" stop-opacity="0"/></linearGradient>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}
+    .sub{font-size:13px;fill:#7FA8D0}
+    .lay{font-size:14px;fill:#00E5FF;font-weight:700}
+    .box{fill:#0A162E;stroke:#1E4E8C;stroke-width:1.4}
+    .box2{fill:#0C1D3A;stroke:#00E5FF;stroke-width:1.6}
+    .h{font-size:16px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:12px;fill:#9FBEDC}
+    .tag{font-size:11px;fill:#F2C14E}
+    .link{fill:none;stroke:#00E5FF;stroke-width:1.6;marker-end:url(#ar)}
+    .link2{fill:none;stroke:#F2C14E;stroke-width:1.4;stroke-dasharray:5 4;marker-end:url(#ar2)}
+    .grid{stroke:#10203F;stroke-width:1}
+  </style>
+  <rect width="1280" height="820" fill="#050A18"/>
+  <g opacity=".45">
+    <path class="grid" d="M0 40H1280M0 80H1280M0 120H1280M0 160H1280M0 200H1280M0 240H1280M0 280H1280M0 320H1280M0 360H1280M0 400H1280M0 440H1280M0 480H1280M0 520H1280M0 560H1280M0 600H1280M0 640H1280M0 680H1280M0 720H1280M0 760H1280M0 800H1280"/>
+    <path class="grid" d="M40 0V820M80 0V820M120 0V820M160 0V820M200 0V820M240 0V820M280 0V820M320 0V820M360 0V820M400 0V820M440 0V820M480 0V820M520 0V820M560 0V820M600 0V820M640 0V820M680 0V820M720 0V820M760 0V820M800 0V820M840 0V820M880 0V820M920 0V820M960 0V820M1000 0V820M1040 0V820M1080 0V820M1120 0V820M1160 0V820M1200 0V820M1240 0V820"/>
+  </g>
+  <rect x="0" y="0" width="1280" height="64" fill="url(#hd)"/>
+  <text class="t" x="40" y="40">01 · 系统架构图</text>
+  <text class="sub" x="1010" y="40">六层架构 · 双服务 · 三链路</text>
+
+  <!-- 用户层 -->
+  <text class="lay" x="40" y="94">用户层</text>
+  <rect class="box2" x="150" y="72" width="300" height="42" rx="8"/>
+  <text class="h" x="170" y="99">浏览器 / 可视化大屏</text>
+  <rect class="box" x="470" y="72" width="330" height="42" rx="8"/>
+  <text class="p" x="490" y="98">1920×1080 设计基准 · 三栏 + HUD</text>
+  <rect class="box" x="820" y="72" width="420" height="42" rx="8"/>
+  <text class="p" x="840" y="98">运维终端：Grafana / EMQX / MinIO Console</text>
+
+  <!-- 接入层 -->
+  <text class="lay" x="40" y="164">接入层</text>
+  <rect class="box2" x="150" y="138" width="1090" height="52" rx="8"/>
+  <text class="h" x="170" y="162">Nginx :80</text>
+  <text class="p" x="300" y="162">静态资源 / SPA</text>
+  <text class="p" x="460" y="162">/api/v1 按路径分流至 8081 / 8082</text>
+  <text class="p" x="790" y="162">/mqtt WebSocket 代理 → EMQX:8083</text>
+  <text class="tag" x="1080" y="162">gzip · CORS</text>
+  <path class="link" d="M300 114 V138"/>
+
+  <!-- 前端层 -->
+  <text class="lay" x="40" y="250">前端层</text>
+  <rect class="box" x="150" y="212" width="1090" height="76" rx="8"/>
+  <text class="h" x="170" y="238">Vite 5 + TypeScript + Three.js r168</text>
+  <rect class="box2" x="170" y="248" width="240" height="30" rx="6"/><text class="p" x="182" y="268">Store + AppActions 编排</text>
+  <rect class="box2" x="424" y="248" width="240" height="30" rx="6"/><text class="p" x="436" y="268">Viewport / Timeline / acts</text>
+  <rect class="box2" x="678" y="248" width="240" height="30" rx="6"/><text class="p" x="690" y="268">Panels 三栏 HUD</text>
+  <rect class="box2" x="932" y="248" width="288" height="30" rx="6"/><text class="p" x="944" y="268">mockSource / REST / MQTT 三数据源</text>
+  <path class="link" d="M300 190 V212"/>
+
+  <!-- 服务层 -->
+  <text class="lay" x="40" y="356">服务层</text>
+  <rect class="box2" x="150" y="310" width="530" height="100" rx="8"/>
+  <text class="h" x="170" y="338">svc-bridge · Quarkus 3.8 · :8081</text>
+  <text class="p" x="170" y="360">BRG 档案 / 构件树 / 拉索 / 节段 / 车道 / 视点</text>
+  <text class="p" x="170" y="380">剖切方案 / 五幕配置 / 模型资源 / 仿真方案</text>
+  <text class="tag" x="170" y="400">RuntimeStore：默认内存，可切 PostgreSQL</text>
+  <rect class="box2" x="710" y="310" width="530" height="100" rx="8"/>
+  <text class="h" x="730" y="338">svc-shm · Quarkus 3.8 · :8082</text>
+  <text class="p" x="730" y="360">MQTT 清洗 / 实时值 / 指标聚合 / 阈值防抖</text>
+  <text class="p" x="730" y="380">告警推送 / 降采样历史 / 区间统计 / 快照</text>
+  <text class="tag" x="730" y="400">RuntimeState：默认内存，可切 Redis + TDengine</text>
+  <path class="link" d="M415 288 V310"/>
+  <path class="link" d="M975 288 V310"/>
+
+  <!-- 消息与仿真 -->
+  <text class="lay" x="40" y="466">消息 / 仿真</text>
+  <rect class="box" x="150" y="432" width="530" height="66" rx="8"/>
+  <text class="h" x="170" y="458">EMQX 5.7 · :1883 / :8083 / :18083</text>
+  <text class="p" x="170" y="480">sensor/raw/bridge/+ · traffic/vehicle/+ · realtime/bridge/+ · alarm/bridge/*</text>
+  <rect class="box" x="710" y="432" width="530" height="66" rx="8"/>
+  <text class="h" x="730" y="458">Python 3.11 + SimPy 仿真器</text>
+  <text class="p" x="730" y="480">车流泊松到达（1s 稀疏报文） + 150 测点物理规律（2s 原始报文）</text>
+  <path class="link" d="M975 410 V432"/>
+  <path class="link" d="M710 465 H680"/>
+
+  <!-- 数据层 -->
+  <text class="lay" x="40" y="566">数据层</text>
+  <rect class="box" x="150" y="520" width="255" height="76" rx="8"/>
+  <text class="h" x="168" y="546">PostgreSQL / PostGIS</text>
+  <text class="p" x="168" y="568">17 张关系表 · 一次性种子</text>
+  <text class="tag" x="168" y="588">:5432</text>
+  <rect class="box" x="417" y="520" width="245" height="76" rx="8"/>
+  <text class="h" x="435" y="546">Redis 7.2</text>
+  <text class="p" x="435" y="568">realtime:shm:* 实时值缓存</text>
+  <text class="tag" x="435" y="588">:6379 · 220MB LRU</text>
+  <rect class="box" x="674" y="520" width="265" height="76" rx="8"/>
+  <text class="h" x="692" y="546">TDengine 3.3</text>
+  <text class="p" x="692" y="568">shm_metric 超级表 + 子表</text>
+  <text class="tag" x="692" y="588">:6030 / REST :6041</text>
+  <rect class="box" x="951" y="520" width="289" height="76" rx="8"/>
+  <text class="h" x="969" y="546">MinIO</text>
+  <text class="p" x="969" y="568">GLB / Draco 模型与截图对象存储</text>
+  <text class="tag" x="969" y="588">:9000 / Console :9001</text>
+  <path class="link2" d="M415 410 V520"/>
+  <path class="link2" d="M975 498 V520"/>
+
+  <!-- 监控层 -->
+  <text class="lay" x="40" y="660">监控层</text>
+  <rect class="box" x="150" y="620" width="530" height="62" rx="8"/>
+  <text class="h" x="170" y="646">Prometheus :9090</text>
+  <text class="p" x="170" y="668">/q/metrics 拉取 · 服务与容器指标</text>
+  <rect class="box" x="710" y="620" width="530" height="62" rx="8"/>
+  <text class="h" x="730" y="646">Grafana :3000</text>
+  <text class="p" x="730" y="668">可视化大盘 · 桥隧监测看板</text>
+  <path class="link" d="M680 651 H710"/>
+
+  <!-- 三链路说明 -->
+  <rect class="box2" x="150" y="706" width="1090" height="88" rx="8"/>
+  <text class="h" x="170" y="732">三条数据链路（文档 6.4）</text>
+  <text class="p" x="170" y="756">链路 A 监测：SimPy → sensor/raw → 清洗 → 实时值/时序 → realtime/bridge → 热力着色与面板</text>
+  <text class="p" x="170" y="776">链路 B 车流：traffic/vehicle 每秒稀疏状态（t + speed）→ 前端 CatmullRom 补帧 → InstancedMesh ｜ 链路 C 回放：REST 历史查询 → 24h 迷你图</text>
+</svg>

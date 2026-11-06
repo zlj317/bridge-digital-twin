@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860">
+  <defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2ED47A" stop-opacity=".2"/><stop offset="1" stop-color="#2ED47A" stop-opacity="0"/></linearGradient></defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .root{fill:#0C2A3E;stroke:#00E5FF;stroke-width:2}
+    .rt{font-size:20px;fill:#EAF6FF;font-weight:700}
+    .card{fill:#0A162E;stroke:#1E4E8C;stroke-width:1.4}
+    .code{font-size:15px;fill:#00E5FF;font-weight:700}
+    .h{font-size:15px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:12px;fill:#9FBEDC}.tag{font-size:11px;fill:#F2C14E}
+    .ln{fill:none;stroke:#1E4E8C;stroke-width:1.5}
+    .dot{fill:#00E5FF}
+  </style>
+  <rect width="1280" height="860" fill="#050A18"/>
+  <rect x="0" y="0" width="1280" height="64" fill="url(#hd)"/>
+  <text class="t" x="40" y="40">02 · 全功能结构图</text>
+  <text class="sub" x="1010" y="40">8 大模块 / 需求编号对照</text>
+
+  <rect class="root" x="440" y="86" width="400" height="54" rx="10"/>
+  <text class="rt" x="640" y="120" text-anchor="middle">智慧桥梁数字孪生系统</text>
+
+  <path class="ln" d="M640 140 V170 M120 170 H1160"/>
+  <path class="ln" d="M120 170 V196 M410 170 V196 M700 170 V196 M990 170 V196"/>
+  <path class="ln" d="M265 450 V478 M555 450 V478 M845 450 V478 M1135 450 V478"/>
+  <path class="ln" d="M120 478 H1200"/>
+  <g class="dot"><circle cx="120" cy="170" r="4"/><circle cx="410" cy="170" r="4"/><circle cx="700" cy="170" r="4"/><circle cx="990" cy="170" r="4"/></g>
+
+  <!-- 第一行 4 个模块 -->
+  <g>
+    <rect class="card" x="40" y="196" width="275" height="254" rx="10"/>
+    <rect x="40" y="196" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="58" y="221">BRG</text><text class="h" x="112" y="221">桥梁与构件管理</text>
+    <text class="p" x="58" y="258">· 桥梁档案 CRUD / 首屏 bootstrap</text>
+    <text class="p" x="58" y="282">· 三级构件树（塔 / 节段 / 拉索）</text>
+    <text class="p" x="58" y="306">· 72 拉索、42 节段台账</text>
+    <text class="p" x="58" y="330">· 6 车道曲线、6 视点、2 剖切方案</text>
+    <text class="p" x="58" y="354">· 五幕动画配置 / 模型资源登记</text>
+    <text class="tag" x="58" y="390">svc-bridge · 17 张 PG 表中 9 张</text>
+    <text class="tag" x="58" y="412">BRG-001 ~ BRG-010</text>
+  </g>
+  <g>
+    <rect class="card" x="330" y="196" width="275" height="254" rx="10"/>
+    <rect x="330" y="196" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="348" y="221">VIS</text><text class="h" x="400" y="221">三维可视化与动画</text>
+    <text class="p" x="348" y="258">· 分层建模：塔 / 墩 / 承台 / 桩基</text>
+    <text class="p" x="348" y="282">· 骨架生长 → 线框转实体 → 合龙</text>
+    <text class="p" x="348" y="306">· 剖切只切外壳 + 青色描边</text>
+    <text class="p" x="348" y="330">· 四室箱梁内部 / 热力着色</text>
+    <text class="p" x="348" y="354">· 拾取高亮 / 关键帧运镜 / Bloom</text>
+    <text class="tag" x="348" y="390">Three.js r168 · Timeline 12.5s</text>
+    <text class="tag" x="348" y="412">VIS-001 ~ VIS-013</text>
+  </g>
+  <g>
+    <rect class="card" x="620" y="196" width="275" height="254" rx="10"/>
+    <rect x="620" y="196" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="638" y="221">TRA</text><text class="h" x="690" y="221">车流仿真</text>
+    <text class="p" x="638" y="258">· SimPy 泊松到达 / 6 车道</text>
+    <text class="p" x="638" y="282">· 85% 小车 + 15% 货车 / 40~80km/h</text>
+    <text class="p" x="638" y="306">· InstancedMesh 补帧（DrawCall ≤ 4）</text>
+    <text class="p" x="638" y="330">· 密度滑块 0~100% / 车辆信息卡</text>
+    <text class="p" x="638" y="354">· 拖尾 / 车道占用 / 在途统计</text>
+    <text class="tag" x="638" y="390">每秒稀疏报文：t + speed</text>
+    <text class="tag" x="638" y="412">TRA-001 ~ TRA-006</text>
+  </g>
+  <g>
+    <rect class="card" x="910" y="196" width="330" height="254" rx="10"/>
+    <rect x="910" y="196" width="330" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="928" y="221">SHM</text><text class="h" x="982" y="221">结构健康监测</text>
+    <text class="p" x="928" y="258">· 9 类测点字典 / 150 个测点</text>
+    <text class="p" x="928" y="282">· 原始报文校验清洗（脏数据丢弃）</text>
+    <text class="p" x="928" y="306">· 实时值缓存 / 指标聚合</text>
+    <text class="p" x="928" y="330">· 时序历史 / 整桥 2s 快照</text>
+    <text class="p" x="928" y="354">· 传感器三态（正常/预警/告警）</text>
+    <text class="tag" x="928" y="390">svc-shm · Redis + TDengine 设计</text>
+    <text class="tag" x="928" y="412">SHM-001 ~ SHM-009</text>
+  </g>
+
+  <!-- 第二行 4 个模块 -->
+  <g>
+    <rect class="card" x="40" y="478" width="275" height="254" rx="10"/>
+    <rect x="40" y="478" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="58" y="503">ALM</text><text class="h" x="112" y="503">告警管理</text>
+    <text class="p" x="58" y="540">· 双阈值（预警 / 告警）</text>
+    <text class="p" x="58" y="564">· 连续 3 次超限才触发（防抖）</text>
+    <text class="p" x="58" y="588">· 连续 3 次正常自动恢复</text>
+    <text class="p" x="58" y="612">· 弹窗 / 列表 / 红色脉冲</text>
+    <text class="p" x="58" y="636">· 确认 / 忽略 + 健康评分</text>
+    <text class="tag" x="58" y="672">顶栏「模拟告警」可完整演示</text>
+    <text class="tag" x="58" y="694">ALM-001 ~ ALM-006</text>
+  </g>
+  <g>
+    <rect class="card" x="330" y="478" width="275" height="254" rx="10"/>
+    <rect x="330" y="478" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="348" y="503">WEB</text><text class="h" x="400" y="503">前端交互</text>
+    <text class="p" x="348" y="540">· 320 / flex / 340 三栏 + 88px HUD</text>
+    <text class="p" x="348" y="564">· 三种面板样式 A / B / C 组件化</text>
+    <text class="p" x="348" y="588">· 数值 0.6s 滚动 / 加载进度</text>
+    <text class="p" x="348" y="612">· 三视图切换 / 四幕时间轴 / 图例</text>
+    <text class="p" x="348" y="636">· 全屏 / 截图 / WASD / 响应式降级</text>
+    <text class="tag" x="348" y="672">Store 单一状态源 + AppActions</text>
+    <text class="tag" x="348" y="694">WEB-001 ~ WEB-008</text>
+  </g>
+  <g>
+    <rect class="card" x="620" y="478" width="275" height="254" rx="10"/>
+    <rect x="620" y="478" width="275" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="638" y="503">RPT</text><text class="h" x="690" y="503">统计与回放</text>
+    <text class="p" x="638" y="540">· 降采样时序查询（AVG/MAX/MIN）</text>
+    <text class="p" x="638" y="564">· 区间统计 max/min/avg/P95</text>
+    <text class="p" x="638" y="588">· 超限次数 / 24h 迷你折线图</text>
+    <text class="p" x="638" y="612">· 历史快照查询</text>
+    <text class="p" x="638" y="636">· 巡检记录与缺陷台账</text>
+    <text class="tag" x="638" y="672">GET /api/v1/history/*</text>
+    <text class="tag" x="638" y="694">RPT-001 ~ RPT-004</text>
+  </g>
+  <g>
+    <rect class="card" x="910" y="478" width="330" height="254" rx="10"/>
+    <rect x="910" y="478" width="330" height="38" rx="10" fill="#10304F"/>
+    <text class="code" x="928" y="503">SYS</text><text class="h" x="982" y="503">系统管理</text>
+    <text class="p" x="928" y="540">· /q/health 聚合 5 个中间件连通性</text>
+    <text class="p" x="928" y="564">· /q/metrics 指标暴露</text>
+    <text class="p" x="928" y="588">· sys_user / sys_config / sys_oper_log</text>
+    <text class="p" x="928" y="612">· 统一响应 {code,msg,data,traceId}</text>
+    <text class="p" x="928" y="636">· 双数据源自动降级不白屏</text>
+    <text class="tag" x="928" y="672">Prometheus + Grafana 大盘</text>
+    <text class="tag" x="928" y="694">SYS-001 ~ SYS-004</text>
+  </g>
+
+  <rect class="card" x="40" y="762" width="1200" height="72" rx="10"/>
+  <text class="h" x="60" y="790">页面叙事</text>
+  <text class="p" x="60" y="816">左栏：这座桥是什么（档案/结构信息/健康监测） ｜ 中间：它长什么样、里面是什么样 ｜ 右栏：它现在怎么样（监测/车流/告警）</text>
+  <text class="tag" x="60" y="832">五幕：骨架生成 0~4.5s → 桥面合龙 4.5~7.5s → 车辆加载 7.5~9.5s → 结构透视 9.5~12.5s → 稳态巡检</text>
+</svg>

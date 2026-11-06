@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <defs>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF4D4F" stop-opacity=".2"/><stop offset="1" stop-color="#FF4D4F" stop-opacity="0"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#9FBEDC"/></marker>
+    <marker id="arR" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#FF4D4F"/></marker>
+    <marker id="arG" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#2ED47A"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .card{fill:#0A162E;stroke:#27548C;stroke-width:1.4}
+    .green{fill:#0B2C24;stroke:#2ED47A;stroke-width:1.8}
+    .warn{fill:#2A2312;stroke:#F2C14E;stroke-width:1.8}
+    .red{fill:#2C1119;stroke:#FF4D4F;stroke-width:2}
+    .blue{fill:#0C223A;stroke:#4DA3FF;stroke-width:1.8}
+    .h{font-size:15px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:12px;fill:#9FBEDC}.q{font-size:11px;fill:#F2C14E}
+    .gn{fill:#2ED47A}.yl{fill:#F2C14E}.rd{fill:#FF4D4F}.cy{fill:#00E5FF}
+    .l{fill:none;stroke:#9FBEDC;stroke-width:1.6;marker-end:url(#ar)}
+    .lr{fill:none;stroke:#FF4D4F;stroke-width:2;marker-end:url(#arR)}
+    .lg{fill:none;stroke:#2ED47A;stroke-width:2;marker-end:url(#arG)}
+    .lane{fill:#071329;stroke:#1E4E8C;stroke-width:1.2;stroke-dasharray:6 4}
+    .lt{font-size:14px;fill:#00E5FF;font-weight:700}
+  </style>
+  <rect width="1280" height="800" fill="#050A18"/>
+  <rect x="0" y="0" width="1280" height="64" fill="url(#hd)"/>
+  <text class="t" x="36" y="40">07 · 告警生命周期图</text>
+  <text class="sub" x="980" y="40">3 次触发 / 3 次恢复防抖</text>
+
+  <!-- 状态机主流程 -->
+  <rect class="green" x="40" y="100" width="220" height="112" rx="10"/>
+  <text class="h gn" x="60" y="130">NORMAL 正常</text>
+  <text class="p" x="60" y="154">value &lt; warn_max</text>
+  <text class="p" x="60" y="176">传感器青色 / 索力青蓝</text>
+  <text class="q" x="60" y="198">healthGrade = A / 96 分</text>
+
+  <rect class="warn" x="330" y="100" width="220" height="112" rx="10"/>
+  <text class="h yl" x="350" y="130">超限计数 1 / 2 / 3</text>
+  <text class="p" x="350" y="154">超过 warn_max 或 alarm_max</text>
+  <text class="p" x="350" y="176">overStreak++ 且 normalStreak=0</text>
+  <text class="q" x="350" y="198">未达 3 次不产生告警</text>
+
+  <rect class="red" x="620" y="100" width="240" height="112" rx="10"/>
+  <text class="h rd" x="640" y="130">ACTIVE 活动告警</text>
+  <text class="p" x="640" y="154">alarm/bridge/event 推送</text>
+  <text class="p" x="640" y="176">WARN 黄 / ALARM 红</text>
+  <text class="q" x="640" y="198">同一测点去重，不重复弹窗</text>
+
+  <rect class="blue" x="930" y="86" width="310" height="62" rx="10"/>
+  <text class="h" x="950" y="110">CONFIRMED 已确认</text>
+  <text class="p" x="950" y="132">弹窗「确认」· POST /alarms/{code}/confirm</text>
+  <rect class="blue" x="930" y="164" width="310" height="62" rx="10"/>
+  <text class="h" x="950" y="188">IGNORED 已忽略</text>
+  <text class="p" x="950" y="210">弹窗「忽略」· POST /alarms/{code}/ignore</text>
+
+  <path class="l" d="M260 156 H330"/>
+  <path class="lr" d="M550 156 H620"/>
+  <path class="l" d="M860 140 C890 140 900 117 930 117"/>
+  <path class="l" d="M860 172 C890 172 900 195 930 195"/>
+  <text class="q" x="266" y="146">值超阈值</text>
+  <text class="q" x="556" y="146">连续 3 次</text>
+
+  <!-- 恢复 -->
+  <rect class="green" x="620" y="286" width="240" height="104" rx="10"/>
+  <text class="h gn" x="640" y="314">RECOVERED 自动恢复</text>
+  <text class="p" x="640" y="338">连续 3 次回到阈值内</text>
+  <text class="p" x="640" y="358">alarm/bridge/recover 推送</text>
+  <text class="q" x="640" y="378">前端 toast「已恢复正常」</text>
+  <path class="lg" d="M740 212 V286"/>
+  <text class="q" x="752" y="252">3 次正常值</text>
+  <path class="lg" d="M620 338 C430 338 300 300 260 212"/>
+  <text class="q" x="330" y="318">状态机回到 NORMAL，next 周期可再次触发</text>
+
+  <!-- 前端联动 -->
+  <rect class="lane" x="40" y="420" width="1200" height="164" rx="10"/>
+  <text class="lt" x="60" y="446">告警触发后的前端联动（Store 事件驱动，面板互不直接调用）</text>
+  <g>
+    <rect class="card" x="60" y="462" width="220" height="100" rx="8"/>
+    <text class="h" x="76" y="486">弹窗 overlay-card</text>
+    <text class="p" x="76" y="508">标题 / 内容 / 测点</text>
+    <text class="p" x="76" y="528">当前值与阈值对比</text>
+    <text class="p" x="76" y="548">确认 / 忽略 / 关闭</text>
+    <rect class="card" x="296" y="462" width="220" height="100" rx="8"/>
+    <text class="h" x="312" y="486">右栏告警列表</text>
+    <text class="p" x="312" y="508">最近 5 条 / 等级色标</text>
+    <text class="p" x="312" y="528">点击定位关联构件</text>
+    <text class="p" x="312" y="548">恢复后置灰</text>
+    <rect class="card" x="532" y="462" width="220" height="100" rx="8"/>
+    <text class="h" x="548" y="486">3D 联动</text>
+    <text class="p" x="548" y="508">HeatMapper 红色脉冲</text>
+    <text class="p" x="548" y="528">索线发光转红</text>
+    <text class="p" x="548" y="548">传感器球体转红</text>
+    <rect class="card" x="768" y="462" width="220" height="100" rx="8"/>
+    <text class="h" x="784" y="486">指标联动</text>
+    <text class="p" x="784" y="508">healthGrade A → B</text>
+    <text class="p" x="784" y="528">healthScore 96 → 88</text>
+    <text class="p" x="784" y="548">eventCount 1 → 2</text>
+    <rect class="card" x="1004" y="462" width="216" height="100" rx="8"/>
+    <text class="h" x="1020" y="486">构件树联动</text>
+    <text class="p" x="1020" y="508">异常构件红点标记</text>
+    <text class="p" x="1020" y="528">点击复选框显隐</text>
+    <text class="p" x="1020" y="548">点击名称定位相机</text>
+  </g>
+
+  <!-- 防抖时间线 -->
+  <rect class="lane" x="40" y="608" width="1200" height="164" rx="10"/>
+  <text class="lt" x="60" y="634">防抖时序示例：顶栏「模拟告警」按钮 → 注入 3 次超限样本</text>
+  <path d="M80 700 H1220" stroke="#1E4E8C" stroke-width="2"/>
+  <g>
+    <circle cx="160" cy="700" r="7" class="gn"/><text class="p" x="130" y="686">t0 正常</text><text class="q" x="116" y="726">42.0 MPa</text>
+    <circle cx="360" cy="700" r="7" class="yl"/><text class="p" x="330" y="686">t1 超限 1</text><text class="q" x="316" y="726">58.6 MPa</text>
+    <circle cx="560" cy="700" r="7" class="yl"/><text class="p" x="530" y="686">t2 超限 2</text><text class="q" x="516" y="726">58.6 MPa</text>
+    <circle cx="760" cy="700" r="9" class="rd"/><text class="p" x="716" y="686">t3 超限 3 触发</text><text class="q" x="700" y="726">ACTIVE 告警</text>
+    <circle cx="960" cy="700" r="7" class="gn"/><text class="p" x="930" y="686">t4 正常 1</text><text class="q" x="916" y="726">42.0 MPa</text>
+    <circle cx="1120" cy="700" r="7" class="gn"/><text class="p" x="1070" y="686">t5/t6 正常 3 次</text><text class="q" x="1070" y="726">RECOVERED</text>
+  </g>
+  <text class="p" x="80" y="760">阈值：stress warn_max = 55 MPa / alarm_max = 70 MPa；索力 warn_max = 1.350 MN / alarm_max = 1.400 MN；防抖次数可由 bdt.alarm.debounce.up / down 配置。</text>
+</svg>

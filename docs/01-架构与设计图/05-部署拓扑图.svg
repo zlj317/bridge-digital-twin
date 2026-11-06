@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="880" viewBox="0 0 1280 880">
+  <defs>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F2C14E" stop-opacity=".2"/><stop offset="1" stop-color="#F2C14E" stop-opacity="0"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#00E5FF"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .zone{fill:#071329;stroke:#1E4E8C;stroke-width:1.2;stroke-dasharray:6 4}
+    .zt{font-size:14px;fill:#00E5FF;font-weight:700}
+    .card{fill:#0A162E;stroke:#27548C;stroke-width:1.3}
+    .hot{fill:#0C2A3E;stroke:#00E5FF;stroke-width:1.8}
+    .h{font-size:14px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:11px;fill:#9FBEDC}
+    .port{font-size:11px;fill:#F2C14E;font-weight:700}
+    .ln{fill:none;stroke:#00E5FF;stroke-width:1.4;marker-end:url(#ar)}
+    .ln2{fill:none;stroke:#2ED47A;stroke-width:1.2;stroke-dasharray:4 4;marker-end:url(#ar)}
+    .vol{fill:#0A162E;stroke:#7B8CFF;stroke-width:1.2}
+  </style>
+  <rect width="1280" height="880" fill="#050A18"/>
+  <rect x="0" y="0" width="1280" height="64" fill="url(#hd)"/>
+  <text class="t" x="36" y="40">05 · 部署拓扑图</text>
+  <text class="sub" x="1000" y="40">Docker Compose · 11 容器</text>
+
+  <!-- 客户端 -->
+  <rect class="zone" x="24" y="82" width="1232" height="76" rx="10"/>
+  <text class="zt" x="42" y="106">宿主机 / 客户端</text>
+  <rect class="card" x="180" y="96" width="250" height="48" rx="8"/>
+  <text class="h" x="196" y="116">浏览器访问</text><text class="port" x="196" y="136">http://localhost  → :80</text>
+  <rect class="card" x="450" y="96" width="330" height="48" rx="8"/>
+  <text class="h" x="466" y="116">运维控制台</text><text class="port" x="466" y="136">EMQX :18083 ｜ Grafana :3000 ｜ MinIO :9001</text>
+  <rect class="card" x="800" y="96" width="420" height="48" rx="8"/>
+  <text class="h" x="816" y="116">调试直连（可选）</text><text class="port" x="816" y="136">:8081 svc-bridge ｜ :8082 svc-shm ｜ :5173 Vite dev</text>
+
+  <!-- 网关 -->
+  <rect class="hot" x="390" y="188" width="500" height="66" rx="10"/>
+  <text class="h" x="410" y="214">nginx:1.24　bdt-nginx</text>
+  <text class="p" x="410" y="236">静态资源（frontend-dist 卷） / /api/v1 分流 / /mqtt → ws:8083 / gzip / CORS</text>
+  <text class="port" x="770" y="214">:80</text>
+  <path class="ln" d="M640 158 V188"/>
+
+  <!-- 应用层 -->
+  <rect class="zone" x="24" y="278" width="1232" height="132" rx="10"/>
+  <text class="zt" x="42" y="302">应用服务层</text>
+  <rect class="card" x="42" y="314" width="286" height="80" rx="8"/>
+  <text class="h" x="58" y="338">bdt-svc-bridge</text>
+  <text class="p" x="58" y="358">Quarkus 3.8 · 档案与配置</text>
+  <text class="port" x="58" y="380">:8081 ｜ mem 512M</text>
+  <rect class="card" x="344" y="314" width="286" height="80" rx="8"/>
+  <text class="h" x="360" y="338">bdt-svc-shm</text>
+  <text class="p" x="360" y="358">Quarkus 3.8 · MQTT 清洗</text>
+  <text class="port" x="360" y="380">:8082 ｜ mem 512M</text>
+  <rect class="card" x="646" y="314" width="286" height="80" rx="8"/>
+  <text class="h" x="662" y="338">bdt-simulator</text>
+  <text class="p" x="662" y="358">Python 3.11 + SimPy</text>
+  <text class="port" x="662" y="380">MQTT_HOST=emqx:1883</text>
+  <rect class="card" x="948" y="314" width="286" height="80" rx="8"/>
+  <text class="h" x="964" y="338">frontend-build</text>
+  <text class="p" x="964" y="358">Vite 构建 → /out 卷</text>
+  <text class="port" x="964" y="380">VITE_DATA_MODE=live</text>
+  <path class="ln" d="M520 254 V314 M760 254 V314"/>
+  <path class="ln2" d="M1090 254 C1090 274 640 274 640 254"/>
+
+  <!-- 中间件层 -->
+  <rect class="zone" x="24" y="434" width="1232" height="158" rx="10"/>
+  <text class="zt" x="42" y="458">中间件层（healthcheck + depends_on 条件启动）</text>
+  <rect class="card" x="42" y="472" width="232" height="104" rx="8"/>
+  <text class="h" x="58" y="496">bdt-postgres</text>
+  <text class="p" x="58" y="516">postgis/postgis:15-3.3</text>
+  <text class="p" x="58" y="536">01_schema + 02_seed</text>
+  <text class="port" x="58" y="562">:5432 ｜ 1G</text>
+  <rect class="card" x="290" y="472" width="232" height="104" rx="8"/>
+  <text class="h" x="306" y="496">bdt-redis</text>
+  <text class="p" x="306" y="516">redis:7.2-alpine</text>
+  <text class="p" x="306" y="536">appendonly + allkeys-lru</text>
+  <text class="port" x="306" y="562">:6379 ｜ 256M</text>
+  <rect class="card" x="538" y="472" width="232" height="104" rx="8"/>
+  <text class="h" x="554" y="496">bdt-tdengine</text>
+  <text class="p" x="554" y="516">tdengine/tdengine:3.3</text>
+  <text class="p" x="554" y="536">shm_metric 超级表</text>
+  <text class="port" x="554" y="562">:6030 / :6041 ｜ 1G</text>
+  <rect class="card" x="786" y="472" width="232" height="104" rx="8"/>
+  <text class="h" x="802" y="496">bdt-minio</text>
+  <text class="p" x="802" y="516">minio/minio:2025</text>
+  <text class="p" x="802" y="536">bucket bridge-models</text>
+  <text class="port" x="802" y="562">:9000 / :9001 ｜ 512M</text>
+  <rect class="card" x="1034" y="472" width="200" height="104" rx="8"/>
+  <text class="h" x="1050" y="496">bdt-emqx</text>
+  <text class="p" x="1050" y="516">emqx/emqx:5.7</text>
+  <text class="p" x="1050" y="536">acl.conf 挂载</text>
+  <text class="port" x="1050" y="562">:1883 / :8083 / :18083</text>
+  <path class="ln" d="M180 394 V472 M487 394 V472 M789 394 V472"/>
+  <path class="ln" d="M1130 394 V472 M902 394 V472"/>
+
+  <!-- 监控 -->
+  <rect class="zone" x="24" y="616" width="1232" height="88" rx="10"/>
+  <text class="zt" x="42" y="640">监控层</text>
+  <rect class="card" x="180" y="628" width="420" height="60" rx="8"/>
+  <text class="h" x="196" y="652">bdt-prometheus　:9090</text>
+  <text class="p" x="196" y="674">prometheus.yml 拉取 /q/metrics</text>
+  <rect class="card" x="660" y="628" width="420" height="60" rx="8"/>
+  <text class="h" x="676" y="652">bdt-grafana　:3000</text>
+  <text class="p" x="676" y="674">provisioning 自动导入数据源与看板</text>
+  <path class="ln" d="M600 658 H660"/>
+
+  <!-- 卷 -->
+  <rect class="zone" x="24" y="728" width="1232" height="126" rx="10"/>
+  <text class="zt" x="42" y="752">持久化卷（7 个）与资源建议</text>
+  <g>
+    <rect class="vol" x="42" y="766" width="160" height="38" rx="6"/><text class="p" x="56" y="790">pg-data</text>
+    <rect class="vol" x="216" y="766" width="160" height="38" rx="6"/><text class="p" x="230" y="790">redis-data</text>
+    <rect class="vol" x="390" y="766" width="160" height="38" rx="6"/><text class="p" x="404" y="790">taos-data / taos-log</text>
+    <rect class="vol" x="564" y="766" width="160" height="38" rx="6"/><text class="p" x="578" y="790">minio-data</text>
+    <rect class="vol" x="738" y="766" width="160" height="38" rx="6"/><text class="p" x="752" y="790">frontend-dist</text>
+    <rect class="vol" x="912" y="766" width="160" height="38" rx="6"/><text class="p" x="926" y="790">grafana-data</text>
+  </g>
+  <text class="p" x="42" y="832">单机建议 4C / 8G：内存上限合计约 5G；端口仅 PG / Redis 绑定 127.0.0.1，其余对外；启动顺序 PG+Redis+EMQX 健康后拉起服务。</text>
+  <text class="port" x="42" y="850">配置来源：.env.example → docker compose up -d；TZ=Asia/Shanghai；BRIDGE_CODE=BR-DEMO-01</text>
+</svg>

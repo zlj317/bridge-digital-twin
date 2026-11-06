@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071328"/><stop offset="1" stop-color="#0C2140"/></linearGradient>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00E5FF" stop-opacity=".2"/><stop offset="1" stop-color="#00E5FF" stop-opacity="0"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#F2C14E"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .panel{fill:rgba(8,22,46,.9);stroke:#1E4E8C;stroke-width:1.4}
+    .head{fill:#10304F;stroke:none}
+    .h{font-size:13px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:11px;fill:#9FBEDC}
+    .num{font-size:17px;fill:#EAF6FF;font-weight:700}
+    .unit{font-size:10px;fill:#7FA8D0}
+    .cy{fill:#00E5FF}.gn{fill:#2ED47A}.yl{fill:#F2C14E}.rd{fill:#FF4D4F}.bl{fill:#2C7BE5}.or{fill:#FF8A1E}
+    .dim{font-size:11px;fill:#F2C14E}
+    .line{fill:none;stroke:#F2C14E;stroke-width:1.2;marker-end:url(#ar)}
+    .cable{stroke:#00E5FF;stroke-width:1.1;opacity:.8}
+    .frame{stroke:#00E5FF;stroke-width:1.4;fill:none}
+  </style>
+  <rect width="1280" height="780" fill="#050A18"/>
+  <rect x="0" y="0" width="1280" height="60" fill="url(#hd)"/>
+  <text class="t" x="32" y="38">03 · 运行效果示意图</text>
+  <text class="sub" x="1030" y="38">1920×1080 设计基准</text>
+
+  <!-- 舞台背景 -->
+  <rect x="310" y="76" width="660" height="576" rx="4" fill="url(#sky)"/>
+  <g opacity=".35">
+    <rect x="330" y="360" width="34" height="80" fill="#0E1B33"/><rect x="372" y="330" width="44" height="110" fill="#0E1B33"/>
+    <rect x="424" y="348" width="30" height="92" fill="#0E1B33"/><rect x="700" y="336" width="40" height="104" fill="#0E1B33"/>
+    <rect x="748" y="356" width="28" height="84" fill="#0E1B33"/><rect x="790" y="320" width="50" height="120" fill="#0E1B33"/>
+    <rect x="848" y="350" width="36" height="90" fill="#0E1B33"/>
+  </g>
+  <path d="M310 440 H970" stroke="#1E4E8C" stroke-width="1" stroke-dasharray="6 6"/>
+  <!-- 桥塔 -->
+  <g class="frame">
+    <path d="M430 170 H462 M430 170 V440 M462 170 V440"/>
+    <path d="M815 170 H847 M815 170 V440 M847 170 V440"/>
+    <path d="M310 430 Q640 418 970 430 L970 446 Q640 434 310 446 Z"/>
+  </g>
+  <!-- 拉索 -->
+  <g class="cable">
+    <path d="M446 178 L340 430 M446 190 L372 430 M446 202 L404 430 M446 214 L436 430"/>
+    <path d="M446 178 L552 430 M446 190 L524 430 M446 202 L496 430 M446 214 L468 430"/>
+    <path d="M831 178 L725 430 M831 190 L757 430 M831 202 L789 430 M831 214 L769 430"/>
+    <path d="M831 178 L937 430 M831 190 L909 430 M831 202 L881 430 M831 214 L853 430"/>
+  </g>
+  <!-- 车辆 / 传感器 -->
+  <g><rect x="360" y="420" width="12" height="6" rx="2" class="bl"/><rect x="500" y="416" width="12" height="6" rx="2" class="cy"/>
+     <rect x="620" y="412" width="12" height="6" rx="2" class="bl"/><rect x="760" y="414" width="12" height="6" rx="2" class="cy"/>
+     <rect x="890" y="419" width="12" height="6" rx="2" class="bl"/></g>
+  <g><circle cx="420" cy="454" r="3" class="yl"/><circle cx="560" cy="452" r="3" class="yl"/>
+     <circle cx="700" cy="450" r="3" class="or"/><circle cx="860" cy="453" r="3" class="yl"/></g>
+  <text class="p" x="640" y="500" text-anchor="middle">三维舞台：骨架生长 → 合龙 → 车流 → 剖切透视 → 稳态巡检</text>
+  <text class="p" x="640" y="522" text-anchor="middle">左键旋转 · 滚轮缩放 · 点击构件查看档案 · WASD 平移</text>
+
+  <!-- 顶栏 -->
+  <rect class="panel" x="16" y="76" width="1248" height="40" rx="6"/>
+  <text class="p" x="30" y="100">BRIDGE-2026 ｜ 在线 ｜ 本地仿真 ｜ 60 FPS</text>
+  <text class="h" x="640" y="101" text-anchor="middle">智慧桥梁数字孪生平台</text>
+  <text class="p" x="980" y="100">[全景] [结构] [档案] ▾ 视点　模拟告警　截图　全屏</text>
+
+  <!-- 左栏 -->
+  <rect class="panel" x="16" y="128" width="278" height="240" rx="6"/>
+  <rect class="head" x="16" y="128" width="278" height="30" rx="6"/>
+  <text class="h" x="30" y="148">桥梁健康监测 · 样式 A 图标式</text>
+  <g>
+    <circle cx="46" cy="182" r="13" fill="none" stroke="#00E5FF"/><text class="p" x="70" y="180">结构应力</text><text class="num" x="70" y="199">45.5</text><text class="unit" x="112" y="199">MPa</text>
+    <circle cx="46" cy="226" r="13" fill="none" stroke="#00E5FF"/><text class="p" x="70" y="224">索力</text><text class="num" x="70" y="243">1,309</text><text class="unit" x="130" y="243">kN</text>
+    <circle cx="46" cy="270" r="13" fill="none" stroke="#00E5FF"/><text class="p" x="70" y="268">挠度</text><text class="num" x="70" y="287">0.89</text><text class="unit" x="118" y="287">m</text>
+    <circle cx="46" cy="314" r="13" fill="none" stroke="#00E5FF"/><text class="p" x="70" y="312">温度</text><text class="num" x="70" y="331">22.2</text><text class="unit" x="116" y="331">℃</text>
+  </g>
+  <rect class="panel" x="16" y="380" width="278" height="126" rx="6"/>
+  <rect class="head" x="16" y="380" width="278" height="28" rx="6"/>
+  <text class="h" x="30" y="399">构件树</text>
+  <text class="p" x="30" y="424">1# 桥塔（左）　2# 桥塔（右）</text>
+  <text class="p" x="30" y="448">主梁（42 节段）　▾ B-01 …</text>
+  <text class="p" x="30" y="472">箱梁内部结构　护栏　支座组</text>
+
+  <!-- 右栏 -->
+  <rect class="panel" x="986" y="128" width="278" height="228" rx="6"/>
+  <rect class="head" x="986" y="128" width="278" height="30" rx="6"/>
+  <text class="h" x="1000" y="148">车流与运维 · 样式 B 列表式</text>
+  <text class="p" x="1000" y="178">在途车辆</text><text class="num" x="1000" y="198">38</text><text class="unit" x="1030" y="198">辆</text>
+  <text class="p" x="1000" y="224">平均车速</text><text class="num cy" x="1000" y="244">60</text><text class="unit" x="1032" y="244">km/h</text>
+  <text class="p" x="1000" y="270">车道占用</text><text class="num" x="1000" y="290">59</text><text class="unit" x="1030" y="290">%</text>
+  <text class="p" x="1000" y="316">维护建议</text><text class="h gn" x="1000" y="338">检查箱梁 B-03</text>
+
+  <rect class="panel" x="986" y="368" width="278" height="160" rx="6"/>
+  <rect class="head" x="986" y="368" width="278" height="28" rx="6"/>
+  <text class="h" x="1000" y="387">内部透视 · 样式 C 档案式</text>
+  <rect x="1000" y="400" width="16" height="90" rx="3" fill="#FF4D4F"/>
+  <rect x="1000" y="420" width="16" height="70" rx="3" fill="#FFC53D"/>
+  <rect x="1000" y="446" width="16" height="44" rx="3" fill="#7B8CFF"/>
+  <rect x="1000" y="466" width="16" height="24" rx="3" fill="#00E5FF"/>
+  <text class="p" x="1026" y="412">1.40 MN</text><text class="p" x="1026" y="434">1.36 MN</text>
+  <text class="p" x="1026" y="456">1.32 MN</text><text class="p" x="1026" y="478">1.28 MN</text>
+  <text class="p" x="1026" y="502">测点　数值　阈值</text>
+  <circle cx="1006" cy="516" r="3" class="gn"/><text class="p" x="1018" y="520">C-01　1.286　1.350</text>
+
+  <!-- HUD -->
+  <rect class="panel" x="16" y="660" width="1248" height="88" rx="6"/>
+  <text class="h" x="30" y="684">五幕序列 · 12.5s</text>
+  <text class="p" x="30" y="706">❚❚　重播　1.0x</text>
+  <g>
+    <path d="M300 706 H920" stroke="#1E4E8C" stroke-width="2"/>
+    <circle cx="340" cy="706" r="5" class="cy"/><circle cx="530" cy="706" r="5" fill="#0A162E" stroke="#00E5FF"/>
+    <circle cx="700" cy="706" r="5" fill="#0A162E" stroke="#00E5FF"/><circle cx="880" cy="706" r="5" fill="#0A162E" stroke="#00E5FF"/>
+    <text class="p" x="340" y="694" text-anchor="middle">骨架生成</text><text class="p" x="530" y="694" text-anchor="middle">桥面合龙</text>
+    <text class="p" x="700" y="694" text-anchor="middle">车辆加载</text><text class="p" x="880" y="694" text-anchor="middle">结构透视</text>
+  </g>
+  <text class="p" x="400" y="732">−　▰▰▰▰▰▰▰▱▱▱　车流模拟　62%　▰▰▰▰▰▰▰▱▱▱　+</text>
+  <text class="p" x="1040" y="690">图例</text>
+  <text class="p" x="1040" y="712"><tspan class="cy">━</tspan> 拉索　<tspan class="bl">▭</tspan> 桥塔　<tspan class="gn">▭</tspan> 主梁</text>
+  <text class="p" x="1040" y="734"><tspan class="yl">●</tspan> 支座　<tspan class="or">●</tspan> 传感器</text>
+
+  <!-- 尺寸标注 -->
+  <g class="line"><path d="M16 764 H294"/><path d="M294 764 H16"/></g>
+  <text class="dim" x="155" y="758" text-anchor="middle">左栏 320px（示意 278）</text>
+  <path class="line" d="M310 764 H970"/><path class="line" d="M970 764 H310"/>
+  <text class="dim" x="640" y="758" text-anchor="middle">中间舞台 flex 自适应 · 三维视口</text>
+  <path class="line" d="M986 764 H1264"/><path class="line" d="M1264 764 H986"/>
+  <text class="dim" x="1125" y="758" text-anchor="middle">右栏 340px</text>
+  <text class="dim" x="1240" y="120" text-anchor="end">顶栏 64px</text>
+  <text class="dim" x="1240" y="648" text-anchor="end">HUD 88px</text>
+</svg>

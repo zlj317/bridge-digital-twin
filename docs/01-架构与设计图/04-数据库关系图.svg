@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="920" viewBox="0 0 1320 920">
+  <defs>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7B8CFF" stop-opacity=".22"/><stop offset="1" stop-color="#7B8CFF" stop-opacity="0"/></linearGradient>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#7B8CFF"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .grp{fill:#071329;stroke:#1E4E8C;stroke-width:1.3;stroke-dasharray:6 4}
+    .gt{font-size:15px;fill:#00E5FF;font-weight:700}
+    .card{fill:#0A162E;stroke:#27548C;stroke-width:1.2}
+    .main{fill:#0C2A3E;stroke:#00E5FF;stroke-width:2}
+    .name{font-size:13px;fill:#EAF6FF;font-weight:700}
+    .pk{font-size:10px;fill:#F2C14E}.col{font-size:10px;fill:#9FBEDC}
+    .ln{fill:none;stroke:#7B8CFF;stroke-width:1.4;stroke-dasharray:5 4;marker-end:url(#ar)}
+    .note{font-size:12px;fill:#9FBEDC}
+  </style>
+  <rect width="1320" height="920" fill="#050A18"/>
+  <rect x="0" y="0" width="1320" height="64" fill="url(#hd)"/>
+  <text class="t" x="36" y="40">04 · 数据库关系图</text>
+  <text class="sub" x="1030" y="40">PostgreSQL 17 张表</text>
+
+  <!-- 主表 -->
+  <rect class="main" x="490" y="86" width="340" height="112" rx="10"/>
+  <text class="name" x="510" y="112" font-size="17">brg_bridge　桥梁档案主表</text>
+  <text class="pk" x="510" y="136">PK　id ｜ UK bridge_code VARCHAR(64) = BR-DEMO-01</text>
+  <text class="col" x="510" y="158">bridge_name / project_no / bridge_type / tower_height / main_span</text>
+  <text class="col" x="510" y="178">deck_width / cable_count / design_load_t / maintain_level</text>
+
+  <!-- 连线到三组 -->
+  <path class="ln" d="M560 198 C420 210 350 220 330 250"/>
+  <path class="ln" d="M760 198 C900 210 970 220 990 250"/>
+  <path class="ln" d="M660 198 V250"/>
+
+  <!-- 桥梁结构组 -->
+  <rect class="grp" x="24" y="250" width="620" height="560" rx="10"/>
+  <text class="gt" x="44" y="278">桥梁结构 / 场景配置组（9 张）</text>
+  <g>
+    <rect class="card" x="44" y="292" width="280" height="112" rx="8"/>
+    <text class="name" x="58" y="314">brg_component　构件树</text>
+    <text class="pk" x="58" y="334">PK comp_code ｜ FK bridge_code</text>
+    <text class="col" x="58" y="354">parent_code 自关联 / comp_type / sort_no</text>
+    <text class="col" x="58" y="374">三套模型编码 skeleton / solid / inner</text>
+    <text class="col" x="58" y="394">clip_exempt 剖切豁免标记</text>
+
+    <rect class="card" x="344" y="292" width="280" height="112" rx="8"/>
+    <text class="name" x="358" y="314">brg_cable　拉索台账 72</text>
+    <text class="pk" x="358" y="334">PK cable_code ｜ FK bridge_code</text>
+    <text class="col" x="358" y="354">tower_side L/R ｜ face LEFT/RIGHT</text>
+    <text class="col" x="358" y="374">anchor_top / anchor_bottom JSONB</text>
+    <text class="col" x="358" y="394">design / warn / alarm 三级索力 MN</text>
+
+    <rect class="card" x="44" y="420" width="280" height="112" rx="8"/>
+    <text class="name" x="58" y="442">brg_girder_segment　节段 42</text>
+    <text class="pk" x="58" y="462">PK segment_code ｜ FK bridge_code</text>
+    <text class="col" x="58" y="482">chainage -420~420 ｜ length_m 20</text>
+    <text class="col" x="58" y="502">cell_count 4 ｜ weight_t ｜ is_closure</text>
+    <text class="col" x="58" y="522">B-21 / B-22 为合龙段</text>
+
+    <rect class="card" x="344" y="420" width="280" height="112" rx="8"/>
+    <text class="name" x="358" y="442">brg_lane　车道路径 6</text>
+    <text class="pk" x="358" y="462">PK lane_code ｜ FK bridge_code</text>
+    <text class="col" x="358" y="482">direction UP/DOWN ｜ lane_index</text>
+    <text class="col" x="358" y="502">offset_m -8.75 ~ 8.75</text>
+    <text class="col" x="358" y="522">curve_points JSONB 样条控制点</text>
+
+    <rect class="card" x="44" y="548" width="280" height="112" rx="8"/>
+    <text class="name" x="58" y="570">brg_viewpoint　视点 6</text>
+    <text class="pk" x="58" y="590">PK vp_code ｜ FK bridge_code</text>
+    <text class="col" x="58" y="610">cam_pos / cam_target JSONB ｜ fov</text>
+    <text class="col" x="58" y="630">全景鸟瞰 / 桥面平视 / 桥底剖切</text>
+    <text class="col" x="58" y="650">塔柱特写 / 等轴测 / 桥侧远景</text>
+
+    <rect class="card" x="344" y="548" width="280" height="112" rx="8"/>
+    <text class="name" x="358" y="570">brg_anim_stage　五幕配置</text>
+    <text class="pk" x="358" y="590">PK stage_code ｜ FK bridge_code</text>
+    <text class="col" x="358" y="610">stage_order / start_ms / end_ms</text>
+    <text class="col" x="358" y="630">cam_keyframes JSONB 关键帧</text>
+    <text class="col" x="358" y="650">target_comps JSONB ｜ auto_play</text>
+
+    <rect class="card" x="44" y="676" width="280" height="112" rx="8"/>
+    <text class="name" x="58" y="698">brg_clip_plan　剖切方案 2</text>
+    <text class="pk" x="58" y="718">PK plan_code ｜ FK bridge_code</text>
+    <text class="col" x="58" y="738">normal JSONB ｜ clip_distance</text>
+    <text class="col" x="58" y="758">show_rebar / diaphragm / stiffener</text>
+    <text class="col" x="58" y="778">edge_color #00E5FF ｜ is_default</text>
+
+    <rect class="card" x="344" y="676" width="280" height="112" rx="8"/>
+    <text class="name" x="358" y="698">scn_model　模型资源 9</text>
+    <text class="pk" x="358" y="718">PK model_code</text>
+    <text class="col" x="358" y="738">model_type / public_url / object_key</text>
+    <text class="col" x="358" y="758">lod_level / is_draco / file_size / md5</text>
+    <text class="col" x="358" y="778">MinIO bucket bridge-models</text>
+  </g>
+
+  <!-- 监测仿真组 -->
+  <rect class="grp" x="668" y="250" width="628" height="560" rx="10"/>
+  <text class="gt" x="688" y="278">监测 / 仿真 / 系统组（8 张）</text>
+  <g>
+    <rect class="card" x="688" y="292" width="290" height="106" rx="8"/>
+    <text class="name" x="702" y="314">shm_point_type　类型字典 9</text>
+    <text class="pk" x="702" y="334">PK ptype_code</text>
+    <text class="col" x="702" y="354">unit / decimals / color / sort_no</text>
+    <text class="col" x="702" y="374">应力·索力·挠度·频率·阻尼·温度·风速·位移·裂缝</text>
+
+    <rect class="card" x="998" y="292" width="278" height="106" rx="8"/>
+    <text class="name" x="1012" y="314">shm_point　测点 150</text>
+    <text class="pk" x="1012" y="334">PK point_code ｜ FK comp_code / ptype_code</text>
+    <text class="col" x="1012" y="354">warn_max / alarm_max 双阈值</text>
+    <text class="col" x="1012" y="374">group_code / pos JSONB / show_in_3d</text>
+
+    <rect class="card" x="688" y="414" width="290" height="106" rx="8"/>
+    <text class="name" x="702" y="436">shm_alarm　告警事件</text>
+    <text class="pk" x="702" y="456">PK alarm_code ｜ FK point_code</text>
+    <text class="col" x="702" y="476">alarm_level WARN/ALARM ｜ status</text>
+    <text class="col" x="702" y="496">ACTIVE → CONFIRMED / IGNORED → RECOVERED</text>
+
+    <rect class="card" x="998" y="414" width="278" height="106" rx="8"/>
+    <text class="name" x="1012" y="436">shm_inspection　巡检记录</text>
+    <text class="pk" x="1012" y="456">PK inspect_code ｜ FK bridge_code</text>
+    <text class="col" x="1012" y="476">scan_progress 94 / defect_count 2</text>
+    <text class="col" x="1012" y="496">key_area / risk_level / next_inspect_date</text>
+
+    <rect class="card" x="688" y="536" width="290" height="106" rx="8"/>
+    <text class="name" x="702" y="558">sim_plan　仿真方案</text>
+    <text class="pk" x="702" y="578">PK plan_code ｜ FK bridge_code</text>
+    <text class="col" x="702" y="598">density_pct 62 / avg_speed 58 / vehicle_max 36</text>
+    <text class="col" x="702" y="618">status IDLE / RUNNING / STOPPED</text>
+
+    <rect class="card" x="998" y="536" width="278" height="106" rx="8"/>
+    <text class="name" x="1012" y="558">sys_user　用户</text>
+    <text class="pk" x="1012" y="578">UK username ｜ PK id</text>
+    <text class="col" x="1012" y="598">user_code / password / display_name</text>
+    <text class="col" x="1012" y="618">status ENABLED / DISABLED ｜ last_login_time</text>
+
+    <rect class="card" x="688" y="658" width="290" height="106" rx="8"/>
+    <text class="name" x="702" y="680">sys_config　系统配置</text>
+    <text class="pk" x="702" y="700">UK config_key ｜ PK id</text>
+    <text class="col" x="702" y="720">config_value VARCHAR(512) / value_type</text>
+    <text class="col" x="702" y="740">config_group / editable / description</text>
+
+    <rect class="card" x="998" y="658" width="278" height="106" rx="8"/>
+    <text class="name" x="1012" y="680">sys_oper_log　操作日志</text>
+    <text class="pk" x="1012" y="700">PK log_code</text>
+    <text class="col" x="1012" y="720">module / action / target_code / result</text>
+    <text class="col" x="1012" y="740">oper_time DESC 索引</text>
+  </g>
+
+  <!-- 中间说明 -->
+  <rect class="card" x="490" y="826" width="340" height="72" rx="8"/>
+  <text class="note" x="506" y="850">外键主线：brg_bridge.bridge_code → brg_* / sim_plan</text>
+  <text class="note" x="506" y="872">shm_point.comp_code → brg_component.comp_code</text>
+  <text class="note" x="506" y="892">shm_alarm.point_code → shm_point.point_code</text>
+</svg>

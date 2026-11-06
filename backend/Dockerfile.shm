@@ -1,0 +1,15 @@
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /src/svc-shm
+COPY svc-shm/pom.xml ./pom.xml
+RUN mvn -B -q dependency:go-offline || true
+COPY svc-shm/src ./src
+RUN mvn -B -q -DskipTests package
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /src/svc-shm/target/quarkus-app/lib/ ./lib/
+COPY --from=build /src/svc-shm/target/quarkus-app/*.jar ./
+COPY --from=build /src/svc-shm/target/quarkus-app/app/ ./app/
+COPY --from=build /src/svc-shm/target/quarkus-app/quarkus/ ./quarkus/
+EXPOSE 8082
+ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]

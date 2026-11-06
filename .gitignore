@@ -1,0 +1,12 @@
+node_modules/
+dist/
+target/
+.idea/
+.vscode/
+*.log
+.env
+__pycache__/
+*.pyc
+.venv/
+frontend/dist/
+.DS_Store

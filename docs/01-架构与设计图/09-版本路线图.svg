@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7B8CFF" stop-opacity=".22"/><stop offset="1" stop-color="#7B8CFF" stop-opacity="0"/></linearGradient></defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .card{fill:#0A162E;stroke:#27548C;stroke-width:1.4}
+    .done{fill:#0B2C24;stroke:#2ED47A;stroke-width:1.8}
+    .next{fill:#0C223A;stroke:#4DA3FF;stroke-width:1.6}
+    .later{fill:#14162A;stroke:#7B8CFF;stroke-width:1.4;stroke-dasharray:6 4}
+    .ph{font-size:19px;font-weight:700}.g{fill:#2ED47A}.b{fill:#4DA3FF}.v{fill:#7B8CFF}
+    .h{font-size:13px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:12px;fill:#9FBEDC}.q{font-size:11px;fill:#F2C14E}
+    .ok{fill:#2ED47A}.dot{fill:#00E5FF}
+  </style>
+  <rect width="1280" height="720" fill="#050A18"/>
+  <rect x="0" y="0" width="1280" height="64" fill="url(#hd)"/>
+  <text class="t" x="36" y="40">09 · 版本路线图</text>
+  <text class="sub" x="1000" y="40">P0 已交付 · P1/P2 规划</text>
+
+  <!-- 时间轴 -->
+  <path d="M80 122 H1200" stroke="#1E4E8C" stroke-width="3"/>
+  <g class="dot"><circle cx="150" cy="122" r="8"/><circle cx="565" cy="122" r="8"/><circle cx="990" cy="122" r="8"/></g>
+  <text class="ph g" x="150" y="102" text-anchor="middle">P0 · 可运行原型</text>
+  <text class="ph b" x="565" y="102" text-anchor="middle">P1 · 生产化替换</text>
+  <text class="ph v" x="990" y="102" text-anchor="middle">P2 · 扩展能力</text>
+  <text class="q" x="150" y="146" text-anchor="middle">当前版本（已交付）</text>
+  <text class="q" x="565" y="146" text-anchor="middle">建议 4~6 周</text>
+  <text class="q" x="990" y="146" text-anchor="middle">建议 8~12 周</text>
+
+  <!-- P0 -->
+  <rect class="done" x="40" y="170" width="380" height="420" rx="10"/>
+  <text class="ph g" x="60" y="202">P0 已交付</text>
+  <text class="h" x="60" y="232">架构</text>
+  <text class="p" x="60" y="254">· 11 容器 Compose 拓扑 + 全部配置</text>
+  <text class="p" x="60" y="276">· PG 17 张表 DDL + 种子 / TDengine 超级表</text>
+  <text class="p" x="60" y="298">· Quarkus 双服务 44 个 REST 端点</text>
+  <text class="p" x="60" y="320">· 前端 Store + Actions + 三数据源降级</text>
+  <text class="h" x="60" y="352">功能</text>
+  <text class="p" x="60" y="374">· 五幕 12.5s 动画 / 分层建模 / 剖切</text>
+  <text class="p" x="60" y="396">· 36 台车 6 车道 / 150 测点热力</text>
+  <text class="p" x="60" y="418">· 3 次防抖告警与自动恢复</text>
+  <text class="p" x="60" y="440">· 三栏 HUD / 构件树 / 拾取 / 趋势</text>
+  <text class="h" x="60" y="472">验收</text>
+  <text class="p ok" x="60" y="494">✓ tsc + vite build 通过</text>
+  <text class="p ok" x="60" y="516">✓ 两个 Quarkus 服务 mvn package 通过</text>
+  <text class="p ok" x="60" y="538">✓ 仿真 dry-run 报文正常</text>
+  <text class="p ok" x="60" y="560">✓ 浏览器实测控制台 0 错误</text>
+
+  <!-- P1 -->
+  <rect class="next" x="450" y="170" width="380" height="420" rx="10"/>
+  <text class="ph b" x="470" y="202">P1 生产化替换</text>
+  <text class="h" x="470" y="232">数据层落地</text>
+  <text class="p" x="470" y="254">· RuntimeStore → JdbcRepository 读 PG</text>
+  <text class="p" x="470" y="276">· realtime:shm:* 写 Redis，TTL 5s</text>
+  <text class="p" x="470" y="298">· shm_metric 批量写 TDengine，10s 一批</text>
+  <text class="p" x="470" y="320">· GLB / 截图对象写 MinIO 预签名 URL</text>
+  <text class="h" x="470" y="352">模型与安全</text>
+  <text class="p" x="470" y="374">· Blender 精模 9 个 GLB + Draco 压缩</text>
+  <text class="p" x="470" y="396">· 按 LOD 分级加载，首屏 ≤ 3s</text>
+  <text class="p" x="470" y="418">· sys_user 登录鉴权与操作审计</text>
+  <text class="p" x="470" y="440">· EMQX 认证 / ACL 收紧匿名访问</text>
+  <text class="h" x="470" y="472">可观测性</text>
+  <text class="p" x="470" y="494">· Grafana 业务看板：FPS / 告警 / 车流</text>
+  <text class="p" x="470" y="516">· 日志采集与 traceId 串联</text>
+  <text class="p" x="470" y="538">· 端到端自动化验收脚本</text>
+  <text class="p" x="470" y="560">· 历史数据保留策略与降采样任务</text>
+
+  <!-- P2 -->
+  <rect class="later" x="860" y="170" width="380" height="420" rx="10"/>
+  <text class="ph v" x="880" y="202">P2 扩展能力</text>
+  <text class="h" x="880" y="232">多桥与业务</text>
+  <text class="p" x="880" y="254">· 多桥梁切换与桥群总览</text>
+  <text class="p" x="880" y="276">· 巡检工单 / 养护计划 / 报表导出</text>
+  <text class="p" x="880" y="298">· 真实传感器接入（多协议网关）</text>
+  <text class="p" x="880" y="320">· 缺陷图像识别与趋势预测</text>
+  <text class="h" x="880" y="352">仿真与算法</text>
+  <text class="p" x="880" y="374">· 车流—结构耦合的可配置工况库</text>
+  <text class="p" x="880" y="396">· 有限元求解离线结果回放（非实时）</text>
+  <text class="p" x="880" y="418">· 数字孪生校准与模型参数反演</text>
+  <text class="p" x="880" y="440">· 视频流 / AI 事件检测接入</text>
+  <text class="h" x="880" y="472">交付形态</text>
+  <text class="p" x="880" y="494">· 大屏 4K 适配与多屏联动</text>
+  <text class="p" x="880" y="516">· 移动端巡检 App</text>
+  <text class="p" x="880" y="538">· 私有化部署包与离线授权</text>
+  <text class="p" x="880" y="560">· 多租户与权限分级</text>
+
+  <!-- 底部取舍 -->
+  <rect class="card" x="40" y="612" width="1200" height="86" rx="10"/>
+  <text class="h" x="60" y="638">当前版本两处工程取舍（详见 README 第五节）</text>
+  <text class="p" x="60" y="662">① 桥梁几何由 BridgeBuilder.ts 程序化生成，保留三套模型编码契约，P1 可直接替换为 MinIO 中的 GLB；② 后端默认内存仓储，P1 通过 bdt.storage=cluster 切到 PG / Redis / TDengine。</text>
+  <text class="q" x="60" y="684">范围外（文档 1.4 明确不做）：实时有限元求解、真实硬件采购、多桥集群实时同步、视频流 AI 分析。</text>
+</svg>

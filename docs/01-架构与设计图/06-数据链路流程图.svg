@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="760" viewBox="0 0 1320 760">
+  <defs>
+    <linearGradient id="hd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00E5FF" stop-opacity=".2"/><stop offset="1" stop-color="#00E5FF" stop-opacity="0"/></linearGradient>
+    <marker id="a1" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#00E5FF"/></marker>
+    <marker id="a2" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#F2C14E"/></marker>
+    <marker id="a3" markerWidth="9" markerHeight="9" refX="8" refY="2.5" orient="auto"><path d="M0,0 L0,5 L8,2.5 z" fill="#7B8CFF"/></marker>
+  </defs>
+  <style>
+    text{font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+    .t{font-size:26px;fill:#EAF6FF;font-weight:700}.sub{font-size:13px;fill:#7FA8D0}
+    .lane{fill:#071329;stroke:#1E4E8C;stroke-width:1.2}
+    .lt{font-size:15px;font-weight:700}.c1{fill:#00E5FF}.c2{fill:#F2C14E}.c3{fill:#7B8CFF}
+    .box{fill:#0A162E;stroke:#27548C;stroke-width:1.3}
+    .b1{stroke:#00E5FF}.b2{stroke:#F2C14E}.b3{stroke:#7B8CFF}
+    .h{font-size:13px;fill:#EAF6FF;font-weight:700}
+    .p{font-size:11px;fill:#9FBEDC}
+    .q{font-size:10px;fill:#F2C14E}
+    .l1{fill:none;stroke:#00E5FF;stroke-width:1.8;marker-end:url(#a1)}
+    .l2{fill:none;stroke:#F2C14E;stroke-width:1.8;marker-end:url(#a2)}
+    .l3{fill:none;stroke:#7B8CFF;stroke-width:1.8;marker-end:url(#a3)}
+  </style>
+  <rect width="1320" height="760" fill="#050A18"/>
+  <rect x="0" y="0" width="1320" height="60" fill="url(#hd)"/>
+  <text class="t" x="32" y="38">06 · 数据链路流程图</text>
+  <text class="sub" x="1020" y="38">文档 6.4 · 三条链路</text>
+
+  <!-- 链路 A -->
+  <rect class="lane" x="24" y="78" width="1272" height="192" rx="10"/>
+  <text class="lt c1" x="42" y="104">链路 A｜结构健康监测（QoS 1 · 2s 周期 · 150 测点）</text>
+  <g>
+    <rect class="box b1" x="42" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="54" y="144">shm_sim.py</text>
+    <text class="p" x="54" y="164">BridgeResponseModel</text>
+    <text class="p" x="54" y="182">物理规律生成</text>
+    <text class="p" x="54" y="200">pointCode + value</text>
+    <text class="q" x="54" y="218">source = SIM</text>
+
+    <rect class="box b1" x="252" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="264" y="144">EMQX 主题</text>
+    <text class="p" x="264" y="164">sensor/raw/bridge/</text>
+    <text class="p" x="264" y="182">BR-DEMO-01</text>
+    <text class="q" x="264" y="204">QoS 1 · JSON</text>
+    <text class="q" x="264" y="220">清洗入口亦支持 HTTP</text>
+
+    <rect class="box b1" x="462" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="474" y="144">svc-shm 清洗</text>
+    <text class="p" x="474" y="164">pointCode 存在校验</text>
+    <text class="p" x="474" y="182">value 有限数校验</text>
+    <text class="p" x="474" y="200">时间偏差 ≤ 5min</text>
+    <text class="q" x="474" y="218">脏数据 rejected++</text>
+
+    <rect class="box b1" x="672" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="684" y="144">实时与判定</text>
+    <text class="p" x="684" y="164">realtime:shm:* 值</text>
+    <text class="p" x="684" y="182">shm_metric 时序</text>
+    <text class="p" x="684" y="200">双阈值 + 3 次防抖</text>
+    <text class="q" x="684" y="218">指标聚合 metrics</text>
+
+    <rect class="box b1" x="882" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="894" y="144">EMQX 发布</text>
+    <text class="p" x="894" y="164">realtime/bridge/</text>
+    <text class="p" x="894" y="182">BR-DEMO-01</text>
+    <text class="p" x="894" y="200">alarm/bridge/event</text>
+    <text class="p" x="894" y="218">alarm/bridge/recover</text>
+
+    <rect class="box b1" x="1092" y="122" width="184" height="102" rx="8"/>
+    <text class="h" x="1104" y="144">前端消费</text>
+    <text class="p" x="1104" y="164">HeatMapper 着色</text>
+    <text class="p" x="1104" y="182">SensorLayer 三态</text>
+    <text class="p" x="1104" y="200">面板数值滚动</text>
+    <text class="p" x="1104" y="218">告警弹窗 / 列表</text>
+  </g>
+  <g class="l1"><path d="M226 173 H252"/><path d="M436 173 H462"/><path d="M646 173 H672"/><path d="M856 173 H882"/><path d="M1066 173 H1092"/></g>
+  <text class="q" x="42" y="252">降级：EMQX 不可达时 svc-shm 本地 tickLocalSimulation() 每 2s 生成快照；前端 MQTT 断开 3 次自动切 mockSource，不白屏。</text>
+
+  <!-- 链路 B -->
+  <rect class="lane" x="24" y="286" width="1272" height="192" rx="10"/>
+  <text class="lt c2" x="42" y="312">链路 B｜车流仿真（QoS 0 · 1s 稀疏状态 · 本地补帧）</text>
+  <g>
+    <rect class="box b2" x="42" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="54" y="352">traffic_sim.py</text>
+    <text class="p" x="54" y="372">SimPy 泊松到达</text>
+    <text class="p" x="54" y="390">85% 小车 / 15% 货车</text>
+    <text class="p" x="54" y="408">40~80 km/h</text>
+    <text class="q" x="54" y="426">6 车道 / 36 辆</text>
+
+    <rect class="box b2" x="252" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="264" y="352">稀疏状态报文</text>
+    <text class="p" x="264" y="372">vid / lane / t</text>
+    <text class="p" x="264" y="390">speed / type</text>
+    <text class="p" x="264" y="408">stat + removed</text>
+    <text class="q" x="264" y="426">带宽降低约 90%</text>
+
+    <rect class="box b2" x="462" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="474" y="352">traffic/vehicle/</text>
+    <text class="p" x="474" y="372">BR-DEMO-01</text>
+    <text class="q" x="474" y="392">QoS 0 · 1s</text>
+    <text class="p" x="474" y="412">前端 mqttSource</text>
+    <text class="p" x="474" y="428">解析为 VehicleState[]</text>
+
+    <rect class="box b2" x="672" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="684" y="352">TrafficEngine</text>
+    <text class="p" x="684" y="372">CatmullRomCurve3</text>
+    <text class="p" x="684" y="390">getPointAt(t) 补帧</text>
+    <text class="p" x="684" y="408">回收越界车辆</text>
+    <text class="q" x="684" y="426">60FPS 平滑</text>
+
+    <rect class="box b2" x="882" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="894" y="352">InstancedMesh</text>
+    <text class="p" x="894" y="372">小车 / 货车 / 灯带</text>
+    <text class="p" x="894" y="390">/ 拖尾 4 类实例</text>
+    <text class="p" x="894" y="408">总 DrawCall ≤ 4</text>
+    <text class="q" x="894" y="426">阈值 300 台降级</text>
+
+    <rect class="box b2" x="1092" y="330" width="184" height="102" rx="8"/>
+    <text class="h" x="1104" y="352">交互与统计</text>
+    <text class="p" x="1104" y="372">拾取车辆信息卡</text>
+    <text class="p" x="1104" y="390">在途 / 车速 / 占用</text>
+    <text class="p" x="1104" y="408">密度滑块 0~100%</text>
+    <text class="q" x="1104" y="426">1s 内生效</text>
+  </g>
+  <g class="l2"><path d="M226 381 H252"/><path d="M436 381 H462"/><path d="M646 381 H672"/><path d="M856 381 H882"/><path d="M1066 381 H1092"/></g>
+  <text class="q" x="42" y="460">降级：无 broker 时前端 mockSource 在本地按同样的稀疏状态驱动 TrafficEngine；live 模式车流报文不经过后端，避免 1s 高频 REST。</text>
+
+  <!-- 链路 C -->
+  <rect class="lane" x="24" y="494" width="1272" height="192" rx="10"/>
+  <text class="lt c3" x="42" y="520">链路 C｜首屏与历史回放（REST · 按需拉取）</text>
+  <g>
+    <rect class="box b3" x="42" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="54" y="560">前端 boot()</text>
+    <text class="p" x="54" y="580">加载遮罩 8→100%</text>
+    <text class="p" x="54" y="598">Store 单一状态源</text>
+    <text class="q" x="54" y="618">GET bootstrap 首屏整包</text>
+    <text class="q" x="54" y="636">失败切本地 Seed</text>
+
+    <rect class="box b3" x="252" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="264" y="560">Nginx 分流</text>
+    <text class="p" x="264" y="580">/api/v1/bridges/*</text>
+    <text class="p" x="264" y="598">→ svc-bridge:8081</text>
+    <text class="p" x="264" y="616">/api/v1/points|alarms</text>
+    <text class="p" x="264" y="634">/history → svc-shm:8082</text>
+
+    <rect class="box b3" x="462" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="474" y="560">历史查询</text>
+    <text class="p" x="474" y="580">points + start + end</text>
+    <text class="p" x="474" y="598">interval 10s/1m/6m</text>
+    <text class="p" x="474" y="616">aggr AVG / MAX / MIN</text>
+    <text class="q" x="474" y="636">按时间桶降采样</text>
+
+    <rect class="box b3" x="672" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="684" y="560">区间统计</text>
+    <text class="p" x="684" y="580">count / max / min</text>
+    <text class="p" x="684" y="598">avg / p95</text>
+    <text class="p" x="684" y="616">exceedCount</text>
+    <text class="q" x="684" y="636">history/statistics</text>
+
+    <rect class="box b3" x="882" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="894" y="560">统一响应</text>
+    <text class="p" x="894" y="580">code = 0 成功</text>
+    <text class="p" x="894" y="598">msg / data / traceId</text>
+    <text class="p" x="894" y="616">HistorySeries[]</text>
+    <text class="p" x="894" y="634">[ts, value] 序列</text>
+
+    <rect class="box b3" x="1092" y="538" width="184" height="102" rx="8"/>
+    <text class="h" x="1104" y="560">渲染</text>
+    <text class="p" x="1104" y="580">24h 迷你折线图</text>
+    <text class="p" x="1104" y="598">测点 / 构件档案卡</text>
+    <text class="p" x="1104" y="616">巡检记录与缺陷</text>
+    <text class="q" x="1104" y="636">回放到指定时刻快照</text>
+  </g>
+  <g class="l3"><path d="M226 589 H252"/><path d="M436 589 H462"/><path d="M646 589 H672"/><path d="M856 589 H882"/><path d="M1066 589 H1092"/></g>
+  <text class="q" x="42" y="668">降级：历史不足 24h 时 svc-shm 用平滑正弦序列回填，保证回放无空洞；前端 live 模式查询失败则回退 mockSource.getHistorySeries。</text>
+
+  <text class="p" x="42" y="724">三条链路互相独立：链路 A 走后端清洗，链路 B 直连前端降低带宽，链路 C 按需 REST；任一链路故障均有本地降级路径。</text>
+</svg>
