@@ -15,7 +15,8 @@ const DAY = {
   deep: new THREE.Color(0x0f3552),
   shallow: new THREE.Color(0x246a86),
   sky: new THREE.Color(0xa9cbea),
-  shore: new THREE.Color(0x8b8770),
+  // 远水取冷灰蓝而非土黄：土黄浅滩会在远处连成一大块「平板陆地」，把楼群衬得像泡在水里
+  shore: new THREE.Color(0x5b7787),
   sun: new THREE.Color(0xfff0cf),
   fog: new THREE.Color(0xa9c8df),
   density: 0.00045,
@@ -42,8 +43,8 @@ const VERTEX = /* glsl */`
   void main() {
     vec3 p = position;
     vec2 q = p.xz;
-    // |z| > 210 起逐渐进入浅滩 / 河岸，波纹随之衰减
-    float shore = smoothstep(190.0, 330.0, abs(q.y));
+    // 远水 / 浅滩的波纹衰减拉长，避免突然变成一整块静止的平板
+    float shore = smoothstep(240.0, 520.0, abs(q.y));
     float amp = mix(1.0, 0.18, shore);
     float h = waveField(q, uTime) * amp;
     p.y += h;
@@ -94,8 +95,8 @@ const FRAGMENT = /* glsl */`
     float glint = pow(max(dot(N, H), 0.0), 42.0) * (1.0 - uDay) * 0.14;
 
     vec3 base = mix(uDeep, uShallow, clamp(vHeight * 0.32 + 0.5, 0.0, 1.0));
-    float shore = smoothstep(210.0, 350.0, abs(vWorld.z));
-    base = mix(base, uShoreColor, shore * 0.8);
+    float shore = smoothstep(240.0, 520.0, abs(vWorld.z));
+    base = mix(base, uShoreColor, shore * 0.6);
     vec3 color = mix(base, uSky, fresnel * (0.32 + 0.45 * uDay));
     color += uSunColor * (spec + glint);
     float foam = smoothstep(0.62, 0.92, vHeight + ripple * 0.05) * (1.0 - shore);
