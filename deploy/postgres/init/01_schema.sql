@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS brg_lane (
     create_time TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uk_brg_lane ON brg_lane(bridge_code, lane_code) WHERE is_deleted = false;
-COMMENT ON TABLE brg_lane IS '车道路径：6条（上下行各3），存样条控制点';
+COMMENT ON TABLE brg_lane IS '车道路径：12条（上下行各6），存样条控制点';
 COMMENT ON COLUMN brg_lane.curve_points IS 'CatmullRomCurve3 控制点数组，单位米';
 
 -- ---------- 7.3.6 预设视点 ----------

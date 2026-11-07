@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 CABLE_BASE = [1.290, 1.286, 1.302, 1.278, 1.294, 1.288]
-LANES = ["LN-UP-1", "LN-UP-2", "LN-UP-3", "LN-DN-1", "LN-DN-2", "LN-DN-3"]
+LANES = [f"LN-UP-{i}" for i in range(1, 7)] + [f"LN-DN-{i}" for i in range(1, 7)]
 
 
 def pad(n: int) -> str:
@@ -28,7 +28,7 @@ class BridgeResponseModel:
         """返回 150 个测点的当前值（pointCode -> value）"""
         temperature = 21.4 + 3.2 * math.sin(2 * math.pi * t / 86400) + 0.8 * math.sin(2 * math.pi * t / 300)
         wind = 3.2 + 1.1 * math.sin(2 * math.pi * t / 38) + 0.25 * math.sin(2 * math.pi * t / 7)
-        load = (self.density / 62.0) * (vehicle_count / 36.0)
+        load = (self.density / 62.0) * (vehicle_count / 72.0)
         temp_dev = temperature - 21.4
         truck_ratio = 0.15
 

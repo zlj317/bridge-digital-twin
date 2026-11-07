@@ -10,7 +10,11 @@
   mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, #000 10%, transparent 85%);
 }
 
-.viewport { position: absolute; z-index: 1; top: var(--topbar-h); bottom: var(--hud-h); left: 0; right: 0; }
+.viewport {
+  position: absolute; z-index: 1; top: var(--topbar-h); bottom: var(--hud-h); left: 0; right: 0;
+  animation: viewportIn 1.1s ease-out both;
+}
+@keyframes viewportIn { from { opacity: 0; } to { opacity: 1; } }
 .viewport canvas { display: block; width: 100%; height: 100%; }
 .viewport__veil {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
@@ -20,6 +24,79 @@
   position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0.16;
   background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 229, 255, 0.12) 3px 4px);
 }
+
+/* 白天场景：弱化夜景青色遮罩与扫描线，保留深色 HUD 面板的可读性 */
+.app.is-day .viewport__veil { opacity: 0.3; }
+.app.is-day .viewport__scan { opacity: 0.03; }
+.app.is-day .bg-grid { opacity: 0.35; }
+.app.is-day .stage__hint { color: #16406a; text-shadow: 0 1px 3px rgba(255, 255, 255, 0.55); }
+
+/* 沉浸模式：只保留 3D 视口与浮动工具条，顶栏悬停时可唤回 */
+.app.is-immersive .col--left,
+.app.is-immersive .col--right,
+.app.is-immersive .hud,
+.app.is-immersive .stage__hint,
+.app.is-immersive .bg-grid { opacity: 0; pointer-events: none; transition: opacity 0.35s; }
+.app.is-immersive .topbar { opacity: 0.16; transition: opacity 0.35s; }
+.app.is-immersive .topbar:hover { opacity: 1; }
+.app.is-immersive .stage__tools { bottom: 22px; }
+
+/* 3D 悬停信息卡：标题 / 属性 / 实时值 / 操作提示四层 */
+.viewport__tip {
+  position: fixed; z-index: 60; display: none; pointer-events: none;
+  padding: 8px 11px; font-size: 12px; letter-spacing: 0.4px;
+  min-width: 188px; max-width: 300px;
+  color: var(--text-primary); background: rgba(6, 18, 38, 0.94);
+  border: 1px solid var(--cyan); border-radius: var(--radius);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.22);
+  backdrop-filter: blur(6px);
+}
+.viewport__tip > div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tip__title { font-size: 13px; font-weight: 700; color: #eaf8ff; }
+.tip__meta { margin-top: 3px; font-size: 11px; color: var(--text-dim); }
+.tip__value {
+  margin-top: 6px; font-size: 12px; color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+.tip__hint {
+  margin-top: 6px; padding-top: 5px; font-size: 10px; color: #7f9cbd;
+  border-top: 1px solid rgba(0, 229, 255, 0.18);
+}
+.viewport__tip[data-level="WARN"] { border-color: #ffc53d; }
+.viewport__tip[data-level="WARN"] .tip__value { color: #ffc53d; }
+.viewport__tip[data-level="ALARM"] { border-color: #ff6b6b; box-shadow: 0 0 16px rgba(255, 77, 79, 0.3); }
+.viewport__tip[data-level="ALARM"] .tip__value { color: #ff6b6b; }
+
+/* 选中构件的 3D 空间标注：逐帧投影点击点，随相机运镜跟随 */
+.viewport__marker {
+  position: fixed; z-index: 55; display: none; pointer-events: none;
+  transform: translate(-50%, -160%); padding: 4px 9px;
+  font-size: 11px; letter-spacing: 0.5px; white-space: nowrap;
+  color: #eaf8ff; background: rgba(6, 22, 44, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.8); border-radius: 3px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+.viewport__marker::after {
+  content: ''; position: absolute; left: 50%; bottom: -13px;
+  width: 1px; height: 13px; background: linear-gradient(#00e5ff, transparent);
+}
+.viewport__marker::before {
+  content: ''; position: absolute; left: 50%; bottom: -16px;
+  width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%;
+  background: #00e5ff; box-shadow: 0 0 8px #00e5ff;
+}
+/* 双击聚焦后标注升级为高亮态，和 3D 环形准星形成一致的反馈 */
+.viewport__marker[data-focused="1"] {
+  border-color: #7df3ff;
+  background: rgba(0, 60, 86, 0.94);
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.6), inset 0 0 8px rgba(0, 229, 255, 0.22);
+  animation: marker-focus 1.6s ease-in-out infinite;
+}
+@keyframes marker-focus {
+  0%, 100% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.45), inset 0 0 8px rgba(0, 229, 255, 0.18); }
+  50% { box-shadow: 0 0 22px rgba(0, 229, 255, 0.85), inset 0 0 12px rgba(0, 229, 255, 0.32); }
+}
+.app.is-immersive .viewport__marker { opacity: 0.55; }
 
 /* ---------- 顶栏 ---------- */
 .topbar {
@@ -76,7 +153,11 @@
 }
 .stage__tools .tool-btn { height: 26px; white-space: nowrap; flex: 0 0 auto; }
 .stage__clip { white-space: nowrap; flex: 0 0 auto; }
-.stage__hint { position: absolute; top: 6px; left: 12px; font-size: 12px; color: var(--text-label); letter-spacing: 1px; }
+.stage__hint {
+  position: absolute; top: 6px; left: 12px; right: 12px; font-size: 12px;
+  color: var(--text-label); letter-spacing: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .stage__clip { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
 .stage__clip input[type='range'] { width: 110px; }
 

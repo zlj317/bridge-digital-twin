@@ -12,6 +12,8 @@ export interface AppActions {
   setClipProgress: (p: number) => void;
   setClipDirection: (dir: 'AXIAL' | 'CROSS') => void;
   setWireframe: (v: boolean) => void;
+  setDayFactor: (v: number) => void;
+  setImmersive: (v: boolean) => void;
   setInnerOnly: (v: boolean) => void;
   setComponentVisible: (code: string, visible: boolean) => void;
   focusViewpoint: (vpCode: string) => void;

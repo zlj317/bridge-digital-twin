@@ -14,7 +14,7 @@ class ShmSimulator:
         self.model = model
 
     def tick(self, elapsed: float, stat: dict[str, float | int]) -> int:
-        values = self.model.step(elapsed, int(stat.get("vehicleCount", 36)),
+        values = self.model.step(elapsed, int(stat.get("vehicleCount", 72)),
                                  float(stat.get("avgSpeed", 58)))
         points = [{"pointCode": code, "value": value} for code, value in values.items()]
         payload = {

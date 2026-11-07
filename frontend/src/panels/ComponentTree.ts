@@ -1,6 +1,6 @@
 import type { AppActions } from '../app/actions';
 import { COMPONENTS } from '../config';
-import type { AppState } from '../store/Store';
+import { store, type AppState } from '../store/Store';
 import type { Bootstrap } from '../types';
 import { createPanel } from './Panel';
 
@@ -19,6 +19,20 @@ export function createComponentTree(actions: AppActions, bootstrap: Bootstrap): 
   const panelBody = panel.el.querySelector('.panel__body') as HTMLElement;
   panelBody.style.padding = '10px 14px 14px';
   const expanded = new Set<string>(['GIRDER']);
+
+  // 事件委托：render() 每次重建 innerHTML 也不会丢失悬停监听
+  let lastHover: string | null = null;
+  tree.addEventListener('mouseover', e => {
+    const node = (e.target as HTMLElement).closest<HTMLElement>('.tree__node[data-code]');
+    const code = node?.dataset.code ?? null;
+    if (code === lastHover) return;
+    lastHover = code;
+    store.emit('hoverComponent', code);
+  });
+  tree.addEventListener('mouseleave', () => {
+    lastHover = null;
+    store.emit('hoverComponent', null);
+  });
 
   const render = (state: AppState) => {
     const childrenOf = (code: string) => bootstrap.components.filter(c => c.parentCode === code);

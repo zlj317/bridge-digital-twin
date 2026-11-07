@@ -10,7 +10,7 @@ interface Flight {
   fromPos: THREE.Vector3; toPos: THREE.Vector3;
   fromTarget: THREE.Vector3; toTarget: THREE.Vector3;
   fromFov: number; toFov: number;
-  start: number; duration: number;
+  start: number; duration: number; hold: number;
 }
 
 /** 文档 VIS-011：五幕关键帧插值 + 用户接管 8s 后恢复自动运镜 */
@@ -18,7 +18,7 @@ export class CameraDirector {
   private takeoverUntil = 0;
   private flight: Flight | null = null;
   private readonly steadyTarget = new THREE.Vector3(0, 52, 0);
-  private readonly steadyOffset = new THREE.Vector3(60, -44, 120);
+  private readonly steadyOffset = new THREE.Vector3(240, 130, 380);
   private readonly axisY = new THREE.Vector3(0, 1, 0);
 
   constructor(
@@ -32,7 +32,8 @@ export class CameraDirector {
     this.flight = null;
   }
 
-  flyTo(vp: Viewpoint, duration = 1200): void {
+  /** holdMs 控制飞行结束后暂停自动运镜的时长；双击聚焦需要更长的观察窗口 */
+  flyTo(vp: Viewpoint, duration = 1200, holdMs = 1500): void {
     this.takeoverUntil = 0;
     this.flight = {
       fromPos: this.camera.position.clone(),
@@ -40,7 +41,7 @@ export class CameraDirector {
       fromTarget: this.controls.target.clone(),
       toTarget: new THREE.Vector3(vp.camTarget.x, vp.camTarget.y, vp.camTarget.z),
       fromFov: this.camera.fov, toFov: vp.fov,
-      start: performance.now(), duration,
+      start: performance.now(), duration, hold: holdMs,
     };
   }
 
@@ -71,12 +72,15 @@ export class CameraDirector {
     this.interpolate(a, b, b.t === a.t ? 1 : (local - a.t) / (b.t - a.t));
   }
 
+  /** 稳态巡检运镜：保持开阔斜俯视，沿桥轴缓慢往返 + 方位轻摆 + 高度起伏 */
   private steady(elapsed: number): void {
-    const angle = Math.sin((elapsed * Math.PI * 2) / 24) * 0.21;
+    const cruise = Math.sin((elapsed * Math.PI * 2) / 56) * 120;
+    const angle = 0.12 + Math.sin((elapsed * Math.PI * 2) / 40) * 0.16;
     const pos = this.steadyOffset.clone().applyQuaternion(
       new THREE.Quaternion().setFromAxisAngle(this.axisY, angle),
     );
-    pos.y += Math.sin(elapsed * 0.5) * 3;
+    pos.y += Math.sin(elapsed * 0.35) * 6;
+    this.steadyTarget.set(cruise, 54, 0);
     this.camera.position.copy(this.steadyTarget).add(pos);
     this.controls.target.copy(this.steadyTarget);
   }
@@ -90,7 +94,7 @@ export class CameraDirector {
       this.controls.target.lerpVectors(f.fromTarget, f.toTarget, p);
       this.camera.fov = lerp(f.fromFov, f.toFov, p);
       this.camera.updateProjectionMatrix();
-      if (p >= 1) { this.flight = null; this.takeoverUntil = now + 1500; }
+      if (p >= 1) { this.flight = null; this.takeoverUntil = now + f.hold; }
       return;
     }
     if (now < this.takeoverUntil) return;

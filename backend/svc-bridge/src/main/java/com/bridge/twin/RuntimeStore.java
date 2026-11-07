@@ -22,7 +22,7 @@ public class RuntimeStore {
     private final Map<String, Map<String, Object>> simPlans = new ConcurrentHashMap<>();
     private final List<Map<String, Object>> operLogs = new CopyOnWriteArrayList<>();
     private volatile Map<String, Object> trafficStat = SeedData.o(
-            "vehicleCount", 36, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1);
+            "vehicleCount", 72, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1);
 
     public RuntimeStore() {
         bridges.put(SeedData.BRIDGE_CODE, new LinkedHashMap<>(SeedData.bridge()));
@@ -111,7 +111,7 @@ public class RuntimeStore {
         if (density != null) {
             plan.put("densityPct", density);
             Map<String, Object> stat = new LinkedHashMap<>(trafficStat);
-            stat.put("vehicleCount", Math.round(density * 0.58));
+            stat.put("vehicleCount", Math.round(density * 1.16));
             stat.put("occupancy", Math.round(density) / 100.0);
             trafficStat = stat;
         }

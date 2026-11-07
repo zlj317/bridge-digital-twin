@@ -6,7 +6,7 @@
 INSERT INTO brg_bridge (bridge_code, bridge_name, project_no, bridge_type, tower_height, main_span,
                         side_span, total_length, deck_width, cable_count, design_load_t, build_year,
                         design_life, maintain_level, location, manage_unit)
-VALUES ('BR-DEMO-01','滨江大桥','BR-2026','CABLE_STAYED',216,480,180,840,24,72,55,2031,100,'一级',
+VALUES ('BR-DEMO-01','滨江大桥','BR-2026','CABLE_STAYED',216,480,180,840,48,72,55,2031,100,'一级',
         '示范市·滨江新区跨江段','市桥梁养护中心')
 ON CONFLICT DO NOTHING;
 
@@ -53,10 +53,10 @@ SELECT 'BR-DEMO-01', 'C-' || lpad(g::text,2,'0'),
        CASE WHEN (g-1) % 36 < 18 THEN 'LEFT' ELSE 'RIGHT' END,
        CASE WHEN g <= 36 THEN -240 ELSE 240 END,
        150 - ((g-1) % 18) * 4.2,
-       CASE WHEN (g-1) % 36 < 18 THEN -11 ELSE 11 END,
+       CASE WHEN (g-1) % 36 < 18 THEN -22 ELSE 22 END,
        CASE WHEN g <= 36 THEN -240 + (((g-1) % 18) + 1) * 12
             ELSE 240 - (((g-1) % 18) + 1) * 12 END,
-       60, CASE WHEN (g-1) % 36 < 18 THEN -11 ELSE 11 END,
+       60, CASE WHEN (g-1) % 36 < 18 THEN -22 ELSE 22 END,
        1.280 + (((g-1) % 18) - 9) * 0.004, 1.350, 1.400, DATE '2031-06-18'
 FROM generate_series(1,72) g
 ON CONFLICT DO NOTHING;
@@ -67,14 +67,20 @@ SELECT 'BR-DEMO-01', 'C-' || lpad(g::text,2,'0'), '拉索 C-' || lpad(g::text,2,
 FROM generate_series(1,72) g
 ON CONFLICT DO NOTHING;
 
--- ---------- 6 条车道（桥轴沿 X，桥面标高 58） ----------
+-- ---------- 12 条车道（上下行各 6，桥轴沿 X，桥面标高 58） ----------
 INSERT INTO brg_lane (bridge_code, lane_code, lane_name, direction, lane_index, offset_m, curve_points, speed_limit) VALUES
-('BR-DEMO-01','LN-UP-1','上行1车道','UP',  1,-8.75,'[[-420,58,-8.75],[-200,58,-8.75],[0,58,-8.75],[200,58,-8.75],[420,58,-8.75]]',80),
-('BR-DEMO-01','LN-UP-2','上行2车道','UP',  2,-5.25,'[[-420,58,-5.25],[-200,58,-5.25],[0,58,-5.25],[200,58,-5.25],[420,58,-5.25]]',80),
-('BR-DEMO-01','LN-UP-3','上行3车道','UP',  3,-1.75,'[[-420,58,-1.75],[-200,58,-1.75],[0,58,-1.75],[200,58,-1.75],[420,58,-1.75]]',80),
-('BR-DEMO-01','LN-DN-1','下行1车道','DOWN',1, 1.75,'[[420,58,1.75],[200,58,1.75],[0,58,1.75],[-200,58,1.75],[-420,58,1.75]]',80),
-('BR-DEMO-01','LN-DN-2','下行2车道','DOWN',2, 5.25,'[[420,58,5.25],[200,58,5.25],[0,58,5.25],[-200,58,5.25],[-420,58,5.25]]',80),
-('BR-DEMO-01','LN-DN-3','下行3车道','DOWN',3, 8.75,'[[420,58,8.75],[200,58,8.75],[0,58,8.75],[-200,58,8.75],[-420,58,8.75]]',80)
+('BR-DEMO-01','LN-UP-1','上行1车道','UP',  1,-19.25,'[[-420,58,-19.25],[-200,58,-19.25],[0,58,-19.25],[200,58,-19.25],[420,58,-19.25]]',80),
+('BR-DEMO-01','LN-UP-2','上行2车道','UP',  2,-15.75,'[[-420,58,-15.75],[-200,58,-15.75],[0,58,-15.75],[200,58,-15.75],[420,58,-15.75]]',80),
+('BR-DEMO-01','LN-UP-3','上行3车道','UP',  3,-12.25,'[[-420,58,-12.25],[-200,58,-12.25],[0,58,-12.25],[200,58,-12.25],[420,58,-12.25]]',80),
+('BR-DEMO-01','LN-UP-4','上行4车道','UP',  4, -8.75,'[[-420,58,-8.75],[-200,58,-8.75],[0,58,-8.75],[200,58,-8.75],[420,58,-8.75]]',80),
+('BR-DEMO-01','LN-UP-5','上行5车道','UP',  5, -5.25,'[[-420,58,-5.25],[-200,58,-5.25],[0,58,-5.25],[200,58,-5.25],[420,58,-5.25]]',80),
+('BR-DEMO-01','LN-UP-6','上行6车道','UP',  6, -1.75,'[[-420,58,-1.75],[-200,58,-1.75],[0,58,-1.75],[200,58,-1.75],[420,58,-1.75]]',80),
+('BR-DEMO-01','LN-DN-1','下行1车道','DOWN',1,  1.75,'[[420,58,1.75],[200,58,1.75],[0,58,1.75],[-200,58,1.75],[-420,58,1.75]]',80),
+('BR-DEMO-01','LN-DN-2','下行2车道','DOWN',2,  5.25,'[[420,58,5.25],[200,58,5.25],[0,58,5.25],[-200,58,5.25],[-420,58,5.25]]',80),
+('BR-DEMO-01','LN-DN-3','下行3车道','DOWN',3,  8.75,'[[420,58,8.75],[200,58,8.75],[0,58,8.75],[-200,58,8.75],[-420,58,8.75]]',80),
+('BR-DEMO-01','LN-DN-4','下行4车道','DOWN',4, 12.25,'[[420,58,12.25],[200,58,12.25],[0,58,12.25],[-200,58,12.25],[-420,58,12.25]]',80),
+('BR-DEMO-01','LN-DN-5','下行5车道','DOWN',5, 15.75,'[[420,58,15.75],[200,58,15.75],[0,58,15.75],[-200,58,15.75],[-420,58,15.75]]',80),
+('BR-DEMO-01','LN-DN-6','下行6车道','DOWN',6, 19.25,'[[420,58,19.25],[200,58,19.25],[0,58,19.25],[-200,58,19.25],[-420,58,19.25]]',80)
 ON CONFLICT DO NOTHING;
 
 -- ---------- 视点 ----------
@@ -146,7 +152,7 @@ SELECT 'BR-DEMO-01', 'C-' || lpad(n::text,2,'0'), 'PTS-C-' || lpad(n::text,2,'0'
        'C-' || lpad(n::text,2,'0') || ' 索力', 'CABLE_FORCE', 'MN', 3,
        0, CASE WHEN n = 3 THEN 1.360 ELSE 1.350 END, 0, 1.400, 2, 'TOWER', n,
        CASE WHEN n <= 36 THEN -240 + ((n-1) % 18 + 1) * 12 ELSE 240 - ((n-1) % 18 + 1) * 12 END,
-       58, CASE WHEN (n-1) % 36 < 18 THEN -11 ELSE 11 END
+       58, CASE WHEN (n-1) % 36 < 18 THEN -22 ELSE 22 END
 FROM generate_series(1,72) n
 ON CONFLICT DO NOTHING;
 
@@ -155,7 +161,7 @@ INSERT INTO shm_point (bridge_code, comp_code, point_code, point_name, ptype_cod
                        warn_min, warn_max, alarm_min, alarm_max, group_code, sort_no, pos_x, pos_y, pos_z)
 SELECT 'BR-DEMO-01', 'B-' || lpad(n::text,2,'0'), 'PTS-STR-' || lpad(n::text,2,'0'),
        'B-' || lpad(n::text,2,'0') || ' 应变', 'STRESS', 'MPa', 1,
-       0, 55, 0, 70, 'GIRDER', 100 + n, -420 + (n-1)*20 + 10, 54, 8
+       0, 55, 0, 70, 'GIRDER', 100 + n, -420 + (n-1)*20 + 10, 54, 16
 FROM generate_series(1,42) n
 ON CONFLICT DO NOTHING;
 
@@ -205,7 +211,7 @@ ON CONFLICT DO NOTHING;
 
 -- ---------- 仿真方案 ----------
 INSERT INTO sim_plan (plan_code, bridge_code, plan_name, sim_type, density_pct, avg_speed, vehicle_max)
-VALUES ('SIM-BRIDGE-01','BR-DEMO-01','桥梁车流与监测联合仿真','COUPLED',62,58,36),
+VALUES ('SIM-BRIDGE-01','BR-DEMO-01','桥梁车流与监测联合仿真','COUPLED',62,58,72),
        ('SIM-SHM-01','BR-DEMO-01','SHM 监测独立仿真','SHM',0,0,0)
 ON CONFLICT DO NOTHING;
 

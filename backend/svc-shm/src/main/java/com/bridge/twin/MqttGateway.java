@@ -135,7 +135,7 @@ public class MqttGateway {
                 if ("INJECT_OVERLIMIT".equals(action)) state.injectOverlimit();
                 else if ("SET_DENSITY".equals(action) && msg.get("densityPct") instanceof Number n) {
                     Map<String, Object> stat = new java.util.LinkedHashMap<>(state.trafficStat());
-                    stat.put("vehicleCount", Math.round(n.doubleValue() * 0.58));
+                    stat.put("vehicleCount", Math.round(n.doubleValue() * 1.16));
                     state.setTrafficStat(stat);
                 }
             }

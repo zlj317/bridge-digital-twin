@@ -26,7 +26,7 @@ const SHELL = `
   <div class="main">
     <aside class="col col--left" id="left"></aside>
     <section class="stage">
-      <div class="stage__hint">左键旋转 · 滚轮缩放 · 点击构件查看档案 · WASD 平移</div>
+      <div class="stage__hint" title="WASD 平移 · Q/E 升降 · 空格播放暂停 · R 重播 · C 剖切 · X 线框 · F 全屏 · 1/2/3 切换视图 · Esc 返回全景">左键旋转 · 滚轮缩放 · 悬停查看 · 双击聚焦 · Esc 返回 · H 沉浸 · N 昼夜</div>
       <div class="stage__tools">
         <button class="tool-btn" data-tool="clip">剖切开关</button>
         <button class="tool-btn" data-tool="inner">只看内部</button>
@@ -39,6 +39,13 @@ const SHELL = `
     <aside class="col col--right" id="right"></aside>
   </div>
   <div id="overlays"></div>
+  <div class="viewport__tip" id="hover-tip" data-level="NONE">
+    <div class="tip__title"></div>
+    <div class="tip__meta"></div>
+    <div class="tip__value"></div>
+    <div class="tip__hint"></div>
+  </div>
+  <div class="viewport__marker" id="pick-marker"></div>
 </div>`;
 
 async function boot(): Promise<void> {
@@ -89,6 +96,8 @@ async function boot(): Promise<void> {
     setClipProgress: p => viewport.setClipProgress(p),
     setClipDirection: d => viewport.setClipDirection(d),
     setWireframe: v => viewport.setWireframe(v),
+    setDayFactor: v => viewport.setDayFactor(v),
+    setImmersive: v => store.patch({ immersive: v }),
     setInnerOnly: v => viewport.setInnerOnly(v),
     setComponentVisible: (code, visible) => viewport.setComponentVisible(code, visible),
     focusViewpoint: code => viewport.focus(code),
@@ -100,7 +109,7 @@ async function boot(): Promise<void> {
     screenshot: () => {
       const a = document.createElement('a');
       a.href = viewport.screenshot();
-      a.download = `bridge-twin-${Date.now()}.png`;
+      a.download = `binjiang-twin-${Date.now()}.png`;
       a.click();
       store.emit('toast', { level: 'info', text: '3D 视口截图已保存' });
     },
@@ -161,9 +170,59 @@ async function boot(): Promise<void> {
   stage.querySelector('[data-tool="cross"]')!.addEventListener('click', () => actions.setClipDirection('CROSS'));
   clipSlider.addEventListener('input', () => actions.setClipProgress(Number(clipSlider.value) / 100));
 
+  // 工具按钮状态与 3D 场景状态保持双向可见
+  const syncTools = (s: typeof store.state) => {
+    stage.querySelector('[data-tool="clip"]')?.classList.toggle('is-active', s.clipping);
+    stage.querySelector('[data-tool="inner"]')?.classList.toggle('is-active', s.clipping);
+    stage.querySelector('[data-tool="wire"]')?.classList.toggle('is-active', s.wireframe);
+    stage.querySelector('[data-tool="axial"]')?.classList.toggle('is-active', s.clipDirection === 'AXIAL');
+    stage.querySelector('[data-tool="cross"]')?.classList.toggle('is-active', s.clipDirection === 'CROSS');
+    clipSlider.value = String(Math.round(s.clipProgress * 100));
+  };
+
+  // 3D 悬停信息卡：结构化展示档案名称 / 结构属性 / 实时测值
+  const hoverTip = root.querySelector('#hover-tip') as HTMLElement;
+  const tipTitle = hoverTip.querySelector('.tip__title') as HTMLElement;
+  const tipMeta = hoverTip.querySelector('.tip__meta') as HTMLElement;
+  const tipValue = hoverTip.querySelector('.tip__value') as HTMLElement;
+  const tipHint = hoverTip.querySelector('.tip__hint') as HTMLElement;
+  store.on('hover', h => {
+    if (!h) { hoverTip.style.display = 'none'; return; }
+    tipTitle.textContent = h.title;
+    tipMeta.textContent = h.meta;
+    tipValue.textContent = h.value;
+    tipHint.textContent = h.hint;
+    hoverTip.dataset.level = h.level ?? 'NONE';
+    hoverTip.style.display = 'block';
+    // 卡片变高后按实际尺寸夹取，避免贴边时被裁切
+    const tipW = hoverTip.offsetWidth || 220;
+    const tipH = hoverTip.offsetHeight || 84;
+    hoverTip.style.left = `${Math.max(8, Math.min(h.x + 14, window.innerWidth - tipW - 12))}px`;
+    hoverTip.style.top = `${Math.max(8, Math.min(h.y + 14, window.innerHeight - tipH - 12))}px`;
+  });
+
+  // 选中构件的 3D 空间标注：位置由渲染层逐帧投影给出
+  const pickMarker = root.querySelector('#pick-marker') as HTMLElement;
+  store.on('pickMarker', m => {
+    if (!m || !m.visible) { pickMarker.style.display = 'none'; return; }
+    pickMarker.textContent = m.label;
+    pickMarker.style.display = 'block';
+    pickMarker.style.left = `${m.x}px`;
+    pickMarker.style.top = `${m.y}px`;
+    pickMarker.dataset.focused = m.focused ? '1' : '0';
+  });
+
   // 统一状态订阅：所有面板只读 store，不互相调用
   const views = [topbar, left, right, hud, overlays];
-  store.subscribe(state => views.forEach(v => v.update(state)));
+  store.subscribe(state => {
+    app.classList.toggle('is-day', state.dayFactor > 0.5);
+    app.classList.toggle('is-immersive', state.immersive);
+    syncTools(state);
+    views.forEach(v => v.update(state));
+  });
+  app.classList.toggle('is-day', store.state.dayFactor > 0.5);
+  app.classList.toggle('is-immersive', store.state.immersive);
+  syncTools(store.state);
   views.forEach(v => v.update(store.state));
 
   // 键盘：WASD 第一人称平移、空格播放/暂停、R 重播
@@ -178,6 +237,19 @@ async function boot(): Promise<void> {
     else if (key === 'e') viewport.nudge(0, -step, 0);
     else if (e.code === 'Space') { e.preventDefault(); actions.setPlay(!store.state.playing); }
     else if (key === 'r') actions.replay();
+    else if (key === 'n') actions.setDayFactor(store.state.dayFactor > 0.5 ? 0 : 1);
+    else if (key === 'h') actions.setImmersive(!store.state.immersive);
+    else if (key === 'c') actions.setClipping(!store.state.clipping);
+    else if (key === 'x') actions.setWireframe(!store.state.wireframe);
+    else if (key === 'f') actions.fullscreen();
+    else if (key === '1') actions.setView('V1');
+    else if (key === '2') actions.setView('V2');
+    else if (key === '3') actions.setView('V3');
+    else if (key === 'escape') {
+      actions.setImmersive(false);
+      viewport.clearFocus();
+      store.emit('toast', { level: 'info', text: '已返回全景视图' });
+    }
   });
 
   store.setLoading(86, '连接数据源');

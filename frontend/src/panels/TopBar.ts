@@ -25,6 +25,8 @@ export function createTopBar(actions: AppActions, bootstrap: Bootstrap): PanelVi
         <select class="tool-btn" data-role="viewpoint" title="视点切换">
           ${bootstrap.viewpoints.map(v => `<option value="${v.vpCode}">${v.vpName}</option>`).join('')}
         </select>
+        <button class="tool-btn" data-act="daynight" title="昼夜场景切换">白天</button>
+        <button class="tool-btn" data-act="immersive" title="隐藏面板，沉浸查看 3D（H）">沉浸</button>
         <button class="tool-btn" data-act="alarm">模拟告警</button>
         <button class="tool-btn" data-act="shot">截图</button>
         <button class="tool-btn" data-act="full">全屏</button>
@@ -37,6 +39,10 @@ export function createTopBar(actions: AppActions, bootstrap: Bootstrap): PanelVi
   (el.querySelector('[data-role="viewpoint"]') as HTMLSelectElement).addEventListener('change', e => {
     actions.focusViewpoint((e.target as HTMLSelectElement).value);
   });
+  const dayBtn = el.querySelector('[data-act="daynight"]') as HTMLButtonElement;
+  dayBtn.addEventListener('click', () => actions.setDayFactor(dayBtn.dataset.day === '1' ? 0 : 1));
+  const immersiveBtn = el.querySelector('[data-act="immersive"]') as HTMLButtonElement;
+  immersiveBtn.addEventListener('click', () => actions.setImmersive(immersiveBtn.dataset.on !== '1'));
   el.querySelector('[data-act="alarm"]')!.addEventListener('click', () => actions.simulateAlarm());
   el.querySelector('[data-act="shot"]')!.addEventListener('click', () => actions.screenshot());
   el.querySelector('[data-act="full"]')!.addEventListener('click', () => actions.fullscreen());
@@ -49,6 +55,13 @@ export function createTopBar(actions: AppActions, bootstrap: Bootstrap): PanelVi
       });
       const status = el.querySelector('.topbar__status') as HTMLElement;
       status.innerHTML = `<span class="breath-dot"></span>${COPY.online} ｜ ${s.dataMode === 'mock' ? '本地仿真' : '实时链路'} ｜ ${s.fps} FPS`;
+      const day = s.dayFactor > 0.5;
+      dayBtn.dataset.day = day ? '1' : '0';
+      dayBtn.textContent = day ? '夜景' : '白天';
+      dayBtn.classList.toggle('is-active', day);
+      immersiveBtn.dataset.on = s.immersive ? '1' : '0';
+      immersiveBtn.textContent = s.immersive ? '退出沉浸' : '沉浸';
+      immersiveBtn.classList.toggle('is-active', s.immersive);
     },
   };
 }

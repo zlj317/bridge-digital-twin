@@ -78,6 +78,15 @@ export class ComponentRegistry {
     return true;
   }
 
+  /** 构件树悬停联动：取该编码关联的所有可渲染对象（实例按 mesh 去重） */
+  getObjects(code: string): THREE.Object3D[] {
+    const e = this.map.get(code);
+    if (!e) return [];
+    const out = new Set<THREE.Object3D>(e.objects);
+    e.instances.forEach(i => out.add(i.mesh));
+    return [...out];
+  }
+
   get codes(): string[] { return [...this.map.keys()]; }
   getLayer(code: string): LayerName | undefined { return this.map.get(code)?.layer; }
 }

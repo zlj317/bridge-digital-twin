@@ -32,7 +32,7 @@ public final class SeedDataMini {
             list.add(o("pointCode", "PTS-STR-" + pad(i), "pointName", "B-" + pad(i) + " 应变",
                     "compCode", "B-" + pad(i), "ptypeCode", "STRESS", "unit", "MPa", "decimals", 1,
                     "warnMax", 55, "alarmMax", 70, "groupCode", "GIRDER",
-                    "sortNo", 100 + i, "pos", o("x", -410 + i * 20, "y", 53.5, "z", 8), "showIn3d", true));
+                    "sortNo", 100 + i, "pos", o("x", -410 + i * 20, "y", 53.5, "z", 16), "showIn3d", true));
         }
         String[][] extra = {
                 { "PTS-DEF", "DEFLECTION", "m", "1.2", "1.5", "GIRDER", "8", "2" },
@@ -78,7 +78,7 @@ public final class SeedDataMini {
         return o("stress", 42.0, "cableForce", 1280, "deflection", 0.86, "temperature", 21.4,
                 "windSpeed", 3.2, "frequency", 0.48, "damping", 2.1, "trafficPerHour", 1286,
                 "fatigueIndex", 38, "healthGrade", "A", "healthScore", 96,
-                "vehicleCount", 36, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1,
+                "vehicleCount", 72, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1,
                 "scanProgress", 94, "defectCount", 2, "keyArea", "箱梁 B-03", "riskLevel", "低",
                 "nextInspectDate", "2026-11-12", "maintenanceAdvice", "检查箱梁 B-03",
                 "ts", System.currentTimeMillis());

@@ -14,7 +14,13 @@ import java.util.Map;
 public final class SeedData {
     public static final String BRIDGE_CODE = "BR-DEMO-01";
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final double[] LANE_OFFSETS = { -8.75, -5.25, -1.75, 1.75, 5.25, 8.75 };
+    private static final double[] LANE_OFFSETS = {
+            -19.25, -15.75, -12.25, -8.75, -5.25, -1.75,
+            1.75, 5.25, 8.75, 12.25, 15.75, 19.25
+    };
+    private static final double CABLE_FACE_Z = 22;   // 与前端 GEO.towerLegZ 一致
+    private static final double SENSOR_Z = 16;       // 与前端 GEO.halfDeck * 2/3 一致
+    private static final int VEHICLE_MAX = 72;
 
     private SeedData() {}
 
@@ -39,7 +45,7 @@ public final class SeedData {
         return o(
                 "bridgeCode", BRIDGE_CODE, "bridgeName", "滨江大桥", "projectNo", "BR-2026",
                 "bridgeType", "CABLE_STAYED", "towerHeight", 216, "mainSpan", 480,
-                "sideSpan", 180, "totalLength", 840, "deckWidth", 24, "cableCount", 72,
+                "sideSpan", 180, "totalLength", 840, "deckWidth", 48, "cableCount", 72,
                 "designLoadT", 55, "buildYear", 2031, "designLife", 100,
                 "maintainLevel", "一级", "location", "示范市·滨江新区跨江段",
                 "manageUnit", "市桥梁养护中心");
@@ -53,7 +59,7 @@ public final class SeedData {
             boolean leftFace = (g - 1) % 36 < 18;
             double tx = leftTower ? -240 : 240;
             double sign = leftTower ? 1 : -1;
-            double z = leftFace ? -11 : 11;
+            double z = leftFace ? -CABLE_FACE_Z : CABLE_FACE_Z;
             list.add(o(
                     "cableCode", "C-" + pad(g), "cableNo", no,
                     "towerSide", leftTower ? "L" : "R", "face", leftFace ? "LEFT" : "RIGHT",
@@ -78,17 +84,19 @@ public final class SeedData {
 
     public static List<Map<String, Object>> lanes() {
         List<Map<String, Object>> list = new ArrayList<>();
-        for (int i = 0; i < 6; i++) {
-            boolean up = i < 3;
+        int perDir = LANE_OFFSETS.length / 2;
+        for (int i = 0; i < LANE_OFFSETS.length; i++) {
+            boolean up = i < perDir;
+            int no = up ? i + 1 : i - perDir + 1;
             double off = LANE_OFFSETS[i];
             String pts = up
                     ? String.format("[[-420,58,%s],[-200,58,%s],[0,58,%s],[200,58,%s],[420,58,%s]]", off, off, off, off, off)
                     : String.format("[[420,58,%s],[200,58,%s],[0,58,%s],[-200,58,%s],[-420,58,%s]]", off, off, off, off, off);
             list.add(o(
-                    "laneCode", up ? "LN-UP-" + (i + 1) : "LN-DN-" + (i - 2),
-                    "laneName", (up ? "上行" : "下行") + (up ? i + 1 : i - 2) + "车道",
+                    "laneCode", up ? "LN-UP-" + no : "LN-DN-" + no,
+                    "laneName", (up ? "上行" : "下行") + no + "车道",
                     "direction", up ? "UP" : "DOWN",
-                    "laneIndex", up ? i + 1 : i - 2,
+                    "laneIndex", no,
                     "offsetM", off, "curvePoints", json(pts), "speedLimit", 80));
         }
         return list;
@@ -202,13 +210,13 @@ public final class SeedData {
             list.add(o("pointCode", "PTS-C-" + pad(i), "pointName", "C-" + pad(i) + " 索力",
                     "compCode", "C-" + pad(i), "ptypeCode", "CABLE_FORCE", "unit", "MN", "decimals", 3,
                     "warnMax", i == 3 ? 1.360 : 1.350, "alarmMax", 1.400, "groupCode", "TOWER",
-                    "sortNo", i, "pos", v(x, 60, ((i - 1) % 36 < 18) ? -11 : 11), "showIn3d", true));
+                    "sortNo", i, "pos", v(x, 60, ((i - 1) % 36 < 18) ? -CABLE_FACE_Z : CABLE_FACE_Z), "showIn3d", true));
         }
         for (int i = 1; i <= 42; i++) {
             list.add(o("pointCode", "PTS-STR-" + pad(i), "pointName", "B-" + pad(i) + " 应变",
                     "compCode", "B-" + pad(i), "ptypeCode", "STRESS", "unit", "MPa", "decimals", 1,
                     "warnMax", 55, "alarmMax", 70, "groupCode", "GIRDER",
-                    "sortNo", 100 + i, "pos", v(-420 + (i - 1) * 20 + 10, 53.5, 8), "showIn3d", true));
+                    "sortNo", 100 + i, "pos", v(-420 + (i - 1) * 20 + 10, 53.5, SENSOR_Z), "showIn3d", true));
         }
         String[][] extra = {
                 { "PTS-DEF", "DEFLECTION", "m", "1.2", "1.5", "GIRDER", "8", "2" },
@@ -228,7 +236,7 @@ public final class SeedData {
                         "compCode", e[0].equals("PTS-BRG") ? "BEARINGS" : "GIRDER",
                         "ptypeCode", e[1], "unit", e[2], "decimals", Integer.parseInt(e[7]),
                         "warnMax", Double.parseDouble(e[3]), "alarmMax", Double.parseDouble(e[4]),
-                        "groupCode", e[5], "sortNo", sort++, "pos", v(x, 53.5, i % 2 == 1 ? 8 : -8),
+                        "groupCode", e[5], "sortNo", sort++, "pos", v(x, 53.5, i % 2 == 1 ? SENSOR_Z : -SENSOR_Z),
                         "showIn3d", true));
             }
         }
@@ -242,14 +250,14 @@ public final class SeedData {
 
     public static List<Map<String, Object>> simPlans() {
         return List.of(o("planCode", "SIM-BRIDGE-01", "planName", "桥梁车流与监测联合仿真",
-                "simType", "COUPLED", "densityPct", 62, "avgSpeed", 58, "vehicleMax", 36, "status", "IDLE"));
+                "simType", "COUPLED", "densityPct", 62, "avgSpeed", 58, "vehicleMax", VEHICLE_MAX, "status", "IDLE"));
     }
 
     public static Map<String, Object> metrics() {
         return o("stress", 42.0, "cableForce", 1280, "deflection", 0.86, "temperature", 21.4,
                 "windSpeed", 3.2, "frequency", 0.48, "damping", 2.1, "trafficPerHour", 1286,
                 "fatigueIndex", 38, "healthGrade", "A", "healthScore", 96,
-                "vehicleCount", 36, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1,
+                "vehicleCount", VEHICLE_MAX, "avgSpeed", 58, "occupancy", 0.62, "eventCount", 1,
                 "scanProgress", 94, "defectCount", 2, "keyArea", "箱梁 B-03", "riskLevel", "低",
                 "nextInspectDate", "2026-11-12", "maintenanceAdvice", "检查箱梁 B-03",
                 "ts", System.currentTimeMillis());

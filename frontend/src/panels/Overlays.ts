@@ -1,5 +1,5 @@
 import type { AppActions } from '../app/actions';
-import { CABLE_TABLE, COMPONENTS, POINTS } from '../config';
+import { CABLE_TABLE, COMPONENTS, COPY, POINTS } from '../config';
 import { mockSource } from '../data/mockSource';
 import { store, type AppState } from '../store/Store';
 import type { HistorySeries, HistoryStatistics, VehicleState } from '../types';
@@ -37,7 +37,7 @@ export function createOverlays(actions: AppActions): PanelView & {
   el.className = 'overlays';
   el.innerHTML = `
     <div class="loader">
-      <div class="loader__title">智慧桥梁数字孪生平台</div>
+      <div class="loader__title">${COPY.title}</div>
       <div class="loader__bar"><div class="loader__fill"></div></div>
       <div class="loader__step">初始化…</div>
     </div>

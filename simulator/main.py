@@ -31,7 +31,7 @@ def on_command(_topic: str, payload: dict, model: BridgeResponseModel,
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="智慧桥梁数字孪生仿真器")
+    parser = argparse.ArgumentParser(description="滨江大桥数字孪生智控平台 · 交通仿真器")
     parser.add_argument("--dry-run", action="store_true", help="不连接 MQTT，打印报文到控制台")
     parser.add_argument("--density", type=float, default=float(os.getenv("SIM_DENSITY", "62")))
     parser.add_argument("--duration", type=int, default=int(os.getenv("SIM_DURATION", "0")),

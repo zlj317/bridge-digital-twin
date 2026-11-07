@@ -39,18 +39,21 @@ export const GEO = {
   girderH: 4,
   girderTopY: 58,
   girderBottomY: 54,
-  deckW: 24,
-  halfDeck: 12,
+  deckW: 48,
+  halfDeck: 24,
   towerX: 240,
   towerH: 216,
-  towerLegZ: 11,
+  towerLegZ: 22,
   towerLegW: 8,
   segmentCount: 42,
   segmentLen: 20,
   cableCount: 72,
   cablesPerFace: 18,
   waterY: -2,
-  laneOffsets: [-8.75, -5.25, -1.75, 1.75, 5.25, 8.75] as const,
+  laneWidth: 3.5,
+  // 双向各 6 车道：负 z 为上行、正 z 为下行，中央分隔 3.5m，向外每条 3.5m
+  laneOffsets: [-19.25, -15.75, -12.25, -8.75, -5.25, -1.75,
+                 1.75, 5.25, 8.75, 12.25, 15.75, 19.25] as const,
 } as const;
 
 /** 文档 3.1 总时间轴：12.5s，之后进入稳态巡检循环 */
@@ -66,8 +69,8 @@ export const HUD_ACTS = ACTS.slice(0, 4).map(a => ({ code: a.code, name: a.name,
 
 /** 文档 10.4 文案资产表 */
 export const COPY = {
-  title: '智慧桥梁数字孪生平台',
-  online: 'BRIDGE-2026 ｜ 在线',
+  title: '滨江大桥数字孪生智控平台',
+  online: '滨江大桥 ｜ 在线',
   leftV1Title: '桥梁健康监测',
   leftV2Title: '结构信息',
   leftV3Title: '桥梁档案',
@@ -102,7 +105,7 @@ export const INITIAL_METRICS: BridgeMetrics = {
   fatigueIndex: 38,
   healthGrade: 'A',
   healthScore: 96,
-  vehicleCount: 36,
+  vehicleCount: 72,
   avgSpeed: 58,
   occupancy: 0.62,
   eventCount: 1,
@@ -161,7 +164,7 @@ export const BRIDGE: Bridge = {
   mainSpan: 480,
   sideSpan: 180,
   totalLength: 840,
-  deckWidth: 24,
+  deckWidth: 48,
   cableCount: 72,
   designLoadT: 55,
   buildYear: 2031,
@@ -202,14 +205,17 @@ export const SEGMENTS: GirderSegment[] = Array.from({ length: GEO.segmentCount }
   sortNo: i + 1,
 }));
 
+const LANES_PER_DIRECTION = GEO.laneOffsets.length / 2;
+
 export const LANES: Lane[] = GEO.laneOffsets.map((offset, i) => {
-  const up = i < 3;
+  const up = i < LANES_PER_DIRECTION;
+  const no = up ? i + 1 : i - LANES_PER_DIRECTION + 1;
   const xs = up ? [-420, -200, 0, 200, 420] : [420, 200, 0, -200, -420];
   return {
-    laneCode: up ? `LN-UP-${i + 1}` : `LN-DN-${i - 2}`,
-    laneName: `${up ? '上行' : '下行'}${up ? i + 1 : i - 2}车道`,
+    laneCode: up ? `LN-UP-${no}` : `LN-DN-${no}`,
+    laneName: `${up ? '上行' : '下行'}${no}车道`,
     direction: up ? 'UP' : 'DOWN',
-    laneIndex: up ? i + 1 : i - 2,
+    laneIndex: no,
     offsetM: offset,
     curvePoints: xs.map(x => [x, GEO.deckY, offset] as [number, number, number]),
     speedLimit: 80,
@@ -285,14 +291,34 @@ export const MODELS: ModelResource[] = [
 ];
 
 /** 资产落地清单（来源：桥梁数字孪生资产可用性核查清单）。
- *  核查结论：13 个 GLB 中仅车辆（V01-V05）与通用件（G01-G04）可免费商用下载，桥梁主体须代码生成。
- *  将对应 GLB 放入 frontend/public/assets/models/ 后，前端自动用真实模型替换程序化几何；无文件时回退。
+ *  核查结论：13 个 GLB 中仅车辆（V01-V05）与通用件（G01-G04）共 9 个为 CC0 可商用下载，桥梁主体须代码生成。
+ *  9 个 GLB 已下载至 frontend/public/assets/models/，前端自动用真实模型替换程序化几何；无文件时回退。
  *  直链格式：https://cdn.3dassets.dev/assets/{编号}/v1/model.glb （下载脚本见 scripts/download_assets.*） */
 export const ASSETS = {
-  carA: '/assets/models/25138.glb',    // V05 小型厢式货车（604 面）→ car_a（轿车类）
-  carB: '/assets/models/13964.glb',    // V02 厢式货车（6,816 面）→ car_b（货车类，建议减面至 ~1,500）
-  railing: '/assets/models/15210.glb', // G01 直段双波形护栏（60 面），按 21m 一段阵列
-  gate: '/assets/models/32550.glb',    // G03 升降臂道闸（404 面），桥头限流
+  carA: '/assets/models/25138.glb',          // V05 小型厢式货车（604 面）→ 轿车类车流
+  carB: '/assets/models/13964.glb',          // V02 厢式货车（6,816 面）→ 货车类车流（建议减面至 ~1,500）
+  railing: '/assets/models/15210.glb',       // G01 直段双波形护栏（60 面），按 21m 一段阵列
+  gate: '/assets/models/32550.glb',          // G03 升降臂道闸（404 面），桥头限流
+  cornerRailing: '/assets/models/15211.glb', // G02 转角双波形护栏（480 面），桥端 4 个转角
+  steelColumn: '/assets/models/27843.glb',   // G04 厂房钢柱（96 面），桥侧检修支架
+  cityCar: '/assets/models/32487.glb',       // V01 城市轿车（31,000 面），仅单台近景特写
+  rescueTruck: '/assets/models/13967.glb',   // V03 平板救援车（6,536 面），桥头近景
+  garbageTruck: '/assets/models/13969.glb',  // V04 后装垃圾车（6,840 面），桥头近景
+
+  // 本地导入：docs/glb/ 下的 8 款车（Sketchfab / glbxz.com 来源混合，授权待确认）
+  carSkyline: '/assets/models/cars/low_poly_nissan_skyline_gt-r_viii_r32.glb',   // 4,756 面 → 车流车型 1
+  carSupra: '/assets/models/cars/low_poly_toyota_supra_jza80_mark4_1994.glb',     // 11,381 面 → 车流车型 2
+  carSilvia: '/assets/models/cars/nissan_silvia_s13.glb',                         // 11,618 面 → 车流车型 3
+  showroomWhite: '/assets/models/cars/glbxz_com.glb',                             // 17,633 面 → 桥头展示车
+  flatbed: '/assets/models/cars/modelNew.glb',                                    // 272 面，不完整车斗 → 桥头道具
+} as const;
+
+/** 重资产合计约 36.6 MB，不参与首屏同步预载，由 AssetProps 异步加载后追加到桥头展示区。
+ *  来源：docs/glb/ 本地文件；文件内无 copyright / license 元数据，仅用于内部演示，商用前须确认授权。 */
+export const HERO_ASSETS = {
+  redSedan: '/assets/models/cars/glbxz_com_glbxz_com.glb', // 260,583 面
+  moskvich: '/assets/models/cars/moskvich_407.glb',        // 31,993 面
+  titan: '/assets/models/cars/nissan_titan.glb',           // 305,444 面
 } as const;
 
 /** 构件树（三级）：桥梁 → 塔/梁 → 节段/拉索 */
@@ -342,13 +368,14 @@ export const POINTS: ShmPoint[] = (() => {
   ): ShmPoint => ({ pointCode, pointName, compCode, ptypeCode, unit, decimals, warnMax, alarmMax, groupCode, sortNo, pos, showIn3d: true });
 
   const list: ShmPoint[] = [];
+  const sensorZ = GEO.halfDeck * 2 / 3;
   CABLES.forEach((c, i) => list.push(mk(
     `PTS-C-${pad(i + 1)}`, `${c.cableCode} 索力`, c.cableCode, 'CABLE_FORCE', 'MN', 3,
     i === 2 ? 1.360 : 1.350, 1.400, 'TOWER', c.anchorBottom, i + 1,
   )));
   SEGMENTS.forEach((s, i) => list.push(mk(
     `PTS-STR-${pad(i + 1)}`, `${s.segmentCode} 应变`, s.segmentCode, 'STRESS', 'MPa', 1,
-    55, 70, 'GIRDER', vec(s.chainage, GEO.girderBottomY - 0.5, 8), 100 + i,
+    55, 70, 'GIRDER', vec(s.chainage, GEO.girderBottomY - 0.5, sensorZ), 100 + i,
   )));
   const extra: [string, string, number, number, ShmPoint['groupCode'], number, number][] = [
     ['PTS-DEF', 'DEFLECTION', 1.2, 1.5, 'GIRDER', 8, 2],
@@ -365,7 +392,7 @@ export const POINTS: ShmPoint[] = (() => {
     for (let i = 1; i <= count; i++) {
       const x = -GEO.halfLength + (i * GEO.length) / (count + 1);
       list.push(mk(`${prefix}-${pad(i)}`, `${pt.ptypeName} ${pad(i)}`, prefix === 'PTS-BRG' ? 'BEARINGS' : 'GIRDER',
-        ptype, pt.unit, dec, warn, alarm, group, vec(x, GEO.girderBottomY - 0.5, i % 2 ? 8 : -8), sort++));
+        ptype, pt.unit, dec, warn, alarm, group, vec(x, GEO.girderBottomY - 0.5, i % 2 ? sensorZ : -sensorZ), sort++));
     }
   });
   return list;
@@ -387,7 +414,7 @@ export function buildMockBootstrap(): Bootstrap {
     inspection: INSPECTION,
     simPlans: [{
       planCode: 'SIM-BRIDGE-01', planName: '桥梁车流与监测联合仿真', simType: 'COUPLED',
-      densityPct: 62, avgSpeed: 58, vehicleMax: 36, status: 'RUNNING',
+      densityPct: 62, avgSpeed: 58, vehicleMax: 72, status: 'RUNNING',
     }],
     metrics: { ...INITIAL_METRICS },
   };

@@ -1,6 +1,6 @@
 import { INITIAL_METRICS } from '../config';
 import type {
-  ActCode, Alarm, Bootstrap, BridgeMetrics, RealtimePoint, SelectedContext,
+  ActCode, Alarm, Bootstrap, BridgeMetrics, PointLevel, RealtimePoint, SelectedContext,
   TrafficStat, VehicleState, ViewKey,
 } from '../types';
 
@@ -23,10 +23,25 @@ export interface AppState {
   clipProgress: number;
   clipDirection: 'AXIAL' | 'CROSS';
   wireframe: boolean;
+  dayFactor: number;
+  immersive: boolean;
   dataMode: 'mock' | 'live';
   loading: { progress: number; step: string };
   fps: number;
   degraded: boolean;
+}
+
+/** 3D 悬停卡片的结构化数据：名称、属性、实时值与操作提示分层展示 */
+export interface HoverInfo {
+  kind: 'component' | 'vehicle' | 'sensor';
+  code: string;
+  title: string;
+  meta: string;
+  value: string;
+  level: PointLevel | null;
+  hint: string;
+  x: number;
+  y: number;
 }
 
 export type AppEvents = {
@@ -34,6 +49,9 @@ export type AppEvents = {
   recover: Alarm;
   pick: { kind: 'component' | 'vehicle' | 'sensor'; code: string; payload?: unknown };
   toast: { level: 'info' | 'warn' | 'error'; text: string };
+  hover: HoverInfo | null;
+  hoverComponent: string | null;
+  pickMarker: { x: number; y: number; label: string; visible: boolean; focused: boolean } | null;
   viewportReady: undefined;
   replay: undefined;
   seek: number;
@@ -63,7 +81,7 @@ class AppStore extends Emitter<AppEvents> {
     points: {},
     alarms: [],
     vehicles: [],
-    traffic: { vehicleCount: 36, avgSpeed: 58, occupancy: 0.62, eventCount: 1 },
+    traffic: { vehicleCount: 72, avgSpeed: 58, occupancy: 0.62, eventCount: 1 },
     selected: { bridgeCode: 'BR-DEMO-01', compCode: null, pointCodes: [], act: 'ACT-1', timeCursor: Date.now() },
     view: 'V1',
     actIndex: 0,
@@ -75,6 +93,8 @@ class AppStore extends Emitter<AppEvents> {
     clipProgress: 0,
     clipDirection: 'AXIAL',
     wireframe: false,
+    dayFactor: 0,
+    immersive: false,
     dataMode: 'mock',
     loading: { progress: 0, step: '初始化' },
     fps: 60,

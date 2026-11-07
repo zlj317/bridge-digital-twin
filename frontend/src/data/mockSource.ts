@@ -1,4 +1,4 @@
-import { BRIDGE_CODE, CABLE_TABLE, GEO, INITIAL_METRICS, POINTS } from '../config';
+import { BRIDGE_CODE, CABLE_TABLE, GEO, INITIAL_METRICS, POINTS, LANES as LANE_LIST } from '../config';
 import type {
   Alarm, BridgeMetrics, HistorySeries, HistoryStatistics, PointLevel,
   RealtimePoint, TrafficStat, VehicleState, VehicleType,
@@ -12,7 +12,8 @@ export interface DataSourceHooks {
   onRecover: (alarm: Alarm) => void;
 }
 
-const LANES = ['LN-UP-1', 'LN-UP-2', 'LN-UP-3', 'LN-DN-1', 'LN-DN-2', 'LN-DN-3'];
+// 车道编码直接取 config.LANES，避免与 3D 车道曲线再次不同步
+const LANES = LANE_LIST.map(l => l.laneCode);
 const smooth = (base: number, amp: number, period: number, phase: number, t: number) =>
   base + amp * Math.sin((2 * Math.PI * t) / period + phase)
       + amp * 0.14 * Math.sin((2 * Math.PI * t) / (period * 0.37) + phase * 1.7);
@@ -30,6 +31,8 @@ export class MockDataSource {
   private timers: number[] = [];
   private t0 = Date.now();
   private seq = 0;
+  /** 补车游标：在 12 条车道间轮转，避免永远只补上行道导致下行道逐渐空掉 */
+  private spawnCursor = 0;
   private density = 62;
   private vehicles = new Map<string, VehicleState>();
   private overlimitLeft = 0;
@@ -37,6 +40,8 @@ export class MockDataSource {
   private normalStreak = 0;
   private activeAlarm: Alarm | null = null;
   private metricSeed = { ...INITIAL_METRICS };
+  /** 巡航速度与扰动相位不进入 MQTT 报文，只在数据源内部保存 */
+  private motion = new Map<string, { cruise: number; phase: number }>();
 
   start(hooks: DataSourceHooks): void {
     this.hooks = hooks;
@@ -67,59 +72,138 @@ export class MockDataSource {
 
   private get elapsed(): number { return (Date.now() - this.t0) / 1000; }
 
+  /** 同车道均匀铺开，初始中心距约 140m，远大于车长 + 安全距 */
   private seedVehicles(): void {
-    for (let i = 0; i < 36; i++) this.spawnVehicle(i);
-  }
-
-  private spawnVehicle(i: number): void {
-    const lane = LANES[i % LANES.length];
-    const type: VehicleType = Math.random() < 0.15 ? 'TRUCK' : 'CAR';
-    const speed = 40 + Math.random() * 40;
-    const vid = `V-${String(this.seq++).padStart(4, '0')}`;
-    this.vehicles.set(vid, {
-      vid,
-      lane,
-      t: (i * 0.137 + Math.random() * 0.05) % 1,
-      speed,
-      type,
-      plate: `桥A·${String(10000 + this.seq * 37).slice(-5)}`,
-      weightT: type === 'TRUCK' ? 25 + Math.random() * 20 : 1.5 + Math.random() * 0.8,
-      enterAt: Date.now(),
+    LANES.forEach(lane => {
+      for (let k = 0; k < 6; k++) this.spawnVehicle(lane, (k + 0.4) / 6);
     });
   }
 
+  private vehicleLength(v: VehicleState): number {
+    return v.type === 'TRUCK' ? 9.2 : 4.8;
+  }
+
+  /** 两车中心最小距离 = 各自半车长 + 6m 安全距，换算成归一化里程 t */
+  private minGap(a: VehicleState, b: VehicleState): number {
+    return ((this.vehicleLength(a) + this.vehicleLength(b)) / 2 + 6) / GEO.length;
+  }
+
+  private laneVehicles(): Map<string, VehicleState[]> {
+    const map = new Map<string, VehicleState[]>();
+    LANES.forEach(l => map.set(l, []));
+    this.vehicles.forEach(v => map.get(v.lane)?.push(v));
+    map.forEach(list => list.sort((a, b) => a.t - b.t));
+    return map;
+  }
+
+  private spawnVehicle(lane: string, t = 0): VehicleState {
+    const type: VehicleType = Math.random() < 0.14 ? 'TRUCK' : 'CAR';
+    // 车型分层巡航速度：货车慢、小客车快，避免同车道频繁追及
+    const cruise = type === 'TRUCK' ? 48 + Math.random() * 12 : 68 + Math.random() * 18;
+    const vid = `V-${String(this.seq++).padStart(4, '0')}`;
+    const v: VehicleState = {
+      vid, lane, t, speed: cruise, type,
+      plate: `桥A·${String(10000 + this.seq * 37).slice(-5)}`,
+      weightT: type === 'TRUCK' ? 25 + Math.random() * 20 : 1.5 + Math.random() * 0.8,
+      enterAt: Date.now(),
+    };
+    this.vehicles.set(vid, v);
+    this.motion.set(vid, { cruise, phase: Math.random() * Math.PI * 2 });
+    return v;
+  }
+
   private reconcileVehicles(): void {
-    const target = Math.round((this.density / 62) * 36);
-    while (this.vehicles.size < target) this.spawnVehicle(this.vehicles.size);
-    while (this.vehicles.size > target) {
-      const first = this.vehicles.keys().next().value as string | undefined;
-      if (!first) break;
-      this.vehicles.delete(first);
+    this.rebalance(Math.round((this.density / 62) * 72));
+  }
+
+  /** 删最靠近桥尾的车、只从桥头有净空的车道补车，杜绝突然换位 / 同位生成 */
+  private rebalance(want: number): void {
+    const lanes = this.laneVehicles();
+    while (this.vehicles.size > want) {
+      let victim: VehicleState | null = null;
+      for (const list of lanes.values()) {
+        const last = list[list.length - 1];
+        if (last && (victim === null || last.t > victim.t)) victim = last;
+      }
+      if (victim === null) break;
+      const v: VehicleState = victim;
+      lanes.get(v.lane)?.pop();
+      this.vehicles.delete(v.vid);
+      this.motion.delete(v.vid);
     }
+    let guard = want * 2;
+    while (this.vehicles.size < want && guard-- > 0) {
+      let placed = false;
+      // 从游标处开始轮转查找有净空的车道，保证 UP / DOWN 双向持续有新车驶入
+      for (let step = 0; step < LANES.length; step++) {
+        const lane = LANES[(this.spawnCursor + step) % LANES.length];
+        const list = lanes.get(lane)!;
+        const free = list.length ? list[0].t : 1;
+        if (free < 0.032) continue;
+        const v = this.spawnVehicle(lane, Math.min(0.01, free - 0.025));
+        list.unshift(v);
+        this.spawnCursor = (this.spawnCursor + step + 1) % LANES.length;
+        placed = true;
+        break;
+      }
+      if (!placed) break;
+    }
+  }
+
+  /** 简化跟驰：限速加速度 + 同车道按前车位置钳制，保证前车尾与后车头始终不重叠 */
+  private advance(dt: number): void {
+    const t = this.elapsed;
+    this.vehicles.forEach((v, vid) => {
+      const m = this.motion.get(vid);
+      if (!m) return;
+      const target = m.cruise + 3.4 * Math.sin(t / 16 + m.phase)
+        + 1.2 * Math.sin(t / 6.2 + m.phase * 1.7);
+      const delta = Math.max(-4.5, Math.min(2.6, target - v.speed));
+      v.speed = Math.max(24, Math.min(96, v.speed + delta * Math.min(1, dt)));
+    });
+
+    this.laneVehicles().forEach(list => {
+      const n = list.length;
+      if (!n) return;
+      const base = list.map(v => v.t);
+      for (let i = 0; i < n; i++) {
+        const v = list[i];
+        const front = list[(i + 1) % n];
+        let frontT = base[(i + 1) % n];
+        // 环形车道：t 最大的车，其前车是已绕回桥头的 t 最小车
+        if (frontT <= base[i] + 1e-6) frontT += 1;
+        const ceiling = frontT - this.minGap(v, front);
+        const desired = base[i] + (v.speed / 3.6 / GEO.length) * dt;
+        const next = Math.min(desired, Math.max(base[i], ceiling));
+        if (next < desired - 1e-7) {
+          v.speed = Math.max(front.speed * 0.9, v.speed - 6);
+        }
+        v.t = next;
+      }
+      // 兜底：把历史遗留的过近车距向后推开
+      for (let i = n - 2; i >= 0; i--) {
+        const need = this.minGap(list[i], list[i + 1]);
+        if (list[i + 1].t - list[i].t < need) {
+          list[i].t = Math.max(0.0001, list[i + 1].t - need);
+        }
+      }
+    });
+
+    const removed: string[] = [];
+    this.vehicles.forEach((v, vid) => { if (v.t > 1) removed.push(vid); });
+    removed.forEach(vid => {
+      this.vehicles.delete(vid);
+      this.motion.delete(vid);
+    });
   }
 
   private pushTraffic(): void {
     if (!this.hooks) return;
     const t = this.elapsed;
-    const dt = 1;
-    const removed: string[] = [];
-    this.vehicles.forEach(v => {
-      v.t += (v.speed / 3.6 / GEO.length) * dt;
-      if (v.t > 1) removed.push(v.vid);
-    });
-    removed.forEach(id => {
-      this.vehicles.delete(id);
-      this.spawnVehicle(this.vehicles.size);
-    });
-    // 稳态自然波动 30~40 台
+    this.advance(1);
+    // 稳态自然波动 68~76 台
     const wave = Math.round(Math.sin(t / 9) * 2);
-    const want = Math.round((this.density / 62) * 36) + wave;
-    while (this.vehicles.size < want) this.spawnVehicle(this.vehicles.size);
-    while (this.vehicles.size > want) {
-      const first = this.vehicles.keys().next().value as string | undefined;
-      if (!first) break;
-      this.vehicles.delete(first);
-    }
+    this.rebalance(Math.round((this.density / 62) * 72) + wave);
     const list = [...this.vehicles.values()];
     const avgSpeed = list.reduce((s, v) => s + v.speed, 0) / Math.max(1, list.length);
     const stat: TrafficStat = {

@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover
 
 class TrafficSimulator:
     def __init__(self, publisher: Any, bridge_code: str, density: float = 62.0,
-                 vehicle_max: int = 36) -> None:
+                 vehicle_max: int = 72) -> None:
         self.pub = publisher
         self.bridge_code = bridge_code
         self.density = density
@@ -33,7 +33,8 @@ class TrafficSimulator:
 
     def _lane_arrivals(self, lane: str):
         while True:
-            rate = max(0.05, (self.density / 62.0) * 0.55)
+            # 12 条车道，单车道到达率减半，总到达量与 6 车道时一致
+            rate = max(0.05, (self.density / 62.0) * 0.275)
             yield self.env.timeout(random.expovariate(rate))
             self._spawn(lane)
 
@@ -51,7 +52,7 @@ class TrafficSimulator:
         }
 
     def _seed_vehicles(self) -> None:
-        for i in range(36):
+        for i in range(72):
             self._spawn(LANES[i % len(LANES)])
             v = list(self.vehicles.values())[-1]
             v["t"] = (i * 0.137) % 1
@@ -73,7 +74,7 @@ class TrafficSimulator:
             if v["t"] > 1:
                 removed.append(vid)
                 self.vehicles.pop(vid, None)
-        target = max(0, round((self.density / 62.0) * 36))
+        target = max(0, round((self.density / 62.0) * 72))
         while len(self.vehicles) < target:
             self._spawn()
         while len(self.vehicles) > min(self.vehicle_max * 2, target + 4):

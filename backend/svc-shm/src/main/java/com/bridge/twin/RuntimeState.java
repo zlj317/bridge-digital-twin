@@ -30,7 +30,7 @@ public class RuntimeState {
     private final Map<String, Integer> normalStreak = new ConcurrentHashMap<>();
     private final List<Map<String, Object>> alarms = new CopyOnWriteArrayList<>();
     private volatile Map<String, Object> metrics = SeedDataMini.metrics();
-    private volatile Map<String, Object> trafficStat = o("vehicleCount", 36, "avgSpeed", 58,
+    private volatile Map<String, Object> trafficStat = o("vehicleCount", 72, "avgSpeed", 58,
             "occupancy", 0.62, "eventCount", 1);
     private volatile BiConsumer<String, Object> publisher = (topic, payload) -> {};
     private volatile long accepted = 0;

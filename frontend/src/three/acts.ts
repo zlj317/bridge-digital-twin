@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import { GEO, SEGMENTS } from '../config';
+import { saggedCablePoint } from './BridgeGeometry';
 import type { BridgeModel } from './BridgeBuilder';
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const easeOut = (p: number) => 1 - Math.pow(1 - p, 3);
+const _flow = new THREE.Vector3();
 
 export interface FrameOptions {
   clipping: boolean;
   clipProgress: number;
   wireframe: boolean;
   elapsed: number;
+  /** 1 = 夜景、0 = 白天：控制发光带 / 拉索辉光 / 车道线亮度 */
+  nightFactor: number;
 }
 
 export interface FrameState {
@@ -17,6 +21,8 @@ export interface FrameState {
   sensorReveal: number;
   trafficLoad: number;
   flash: number;
+  /** 幕二实体蒙皮进度：驱动实时阴影淡入，线框阶段不投实心影 */
+  solid: number;
   actProgress: number[];
 }
 
@@ -66,25 +72,32 @@ export function applyFrame(model: BridgeModel, t: number, opts: FrameOptions): F
   }
   model.updateSegmentMatrices(offsets, visibility);
 
-  // ---- 跨中合龙白闪（6.6~7.0s）----
-  const flash = clamp01((t - 6600) / 100) * (1 - clamp01((t - 7000) / 300));
-  (model.closureFlash.material as THREE.MeshBasicMaterial).opacity = flash * 0.9;
+  // ---- 跨中合龙白闪（6.55~7.05s）：横向光带亮起后沿桥轴扩散淡出 ----
+  const flash = clamp01((t - 6550) / 90) * (1 - clamp01((t - 6820) / 230));
+  const spread = clamp01((t - 6550) / 480);
+  const flashMat = model.closureFlash.material as THREE.MeshBasicMaterial;
+  flashMat.opacity = flash * 0.5 * (0.45 + 0.55 * opts.nightFactor);
   model.closureFlash.visible = flash > 0.01;
+  model.closureFlash.scale.set(1 + 7 * spread, 1, 1 + 0.06 * spread);
 
   // ---- 拉索张拉（7.0~7.5s）+ 流动光点 ----
-  model.cables.mat.emissiveIntensity = 1.2 * clamp01((t - 7000) / 500);
-  model.cables.flowMat.opacity = 0.9 * clamp01((t - 7500) / 600) * solidP;
+  const night = opts.nightFactor;
+  model.cables.mat.emissiveIntensity = (0.25 + 0.95 * night) * clamp01((t - 7000) / 500);
+  model.cables.flowMat.opacity = (0.35 + 0.55 * night) * clamp01((t - 7500) / 600) * solidP;
 
-  // ---- 幕三：车道线扫描亮起 + 桥侧发光带脉冲 ----
+  // ---- 幕三：车道线扫描亮起 + 桥侧发光带脉冲（白天关闭发光带，车道线转为实体白） ----
   const laneP = clamp01((t - 7500) / 500);
-  model.segments.laneMat.opacity = 0.6 * laneP;
-  model.centerLineMat.opacity = 0.85 * laneP;
+  model.segments.laneMat.opacity = (0.82 - 0.22 * night) * laneP;
+  model.centerLineMat.opacity = (0.95 - 0.1 * night) * laneP;
   const trafficLoad = clamp01((t - 7500) / 1500);
   const pulse = 0.78 + 0.22 * Math.sin(opts.elapsed * 2.4);
-  model.segments.glowMat.opacity = laneP * (0.25 + 0.65 * clamp01((t - 8500) / 1000)) * pulse;
+  model.segments.glowMat.opacity = laneP * (0.25 + 0.65 * clamp01((t - 8500) / 1000)) * pulse * night;
 
   // ---- 幕四：剖切 + 内部结构分批显 + 传感器点亮 ----
-  const clip = opts.clipping ? opts.clipProgress : clamp01((t - 10200) / 1400);
+  // 幕四短暂演示结构透视，稳态自动收回成完整桥面；
+  // 之后是否剖切完全由用户手动开关 / 滑块控制，避免左右两侧路面永远不一致。
+  const demoClip = clamp01((t - 10200) / 1200) * (1 - clamp01((t - 11800) / 700));
+  const clip = opts.clipping ? opts.clipProgress : demoClip;
   const innerReveal = clamp01((t - 11000) / 1000) * clamp01(clip * 2.5);
   const innerP = [
     innerReveal,
@@ -108,6 +121,7 @@ export function applyFrame(model: BridgeModel, t: number, opts: FrameOptions): F
     sensorReveal,
     trafficLoad,
     flash,
+    solid: solidP,
     actProgress: [
       clamp01(t / 4500), clamp01((t - 4500) / 3000),
       clamp01((t - 7500) / 2000), clamp01((t - 9500) / 3000),
@@ -123,7 +137,8 @@ export function updateCableFlow(model: BridgeModel, elapsed: number): void {
   const step = Math.floor(elapsed / 0.3) / 12;
   model.cables.anchors.forEach(([a, b], i) => {
     const t = (step + i * 0.137) % 1;
-    pos.setXYZ(i, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
+    saggedCablePoint(a, b, t, _flow);
+    pos.setXYZ(i, _flow.x, _flow.y, _flow.z);
   });
   pos.needsUpdate = true;
 }
