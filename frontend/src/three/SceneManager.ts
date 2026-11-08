@@ -5,6 +5,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { COLORS, GEO } from '../config';
@@ -127,6 +128,7 @@ export class SceneManager {
   readonly composer: EffectComposer;
   readonly bloom: UnrealBloomPass;
   readonly outline: OutlinePass;
+  readonly gtao: GTAOPass;
   readonly clock = new THREE.Clock();
 
   private updates: UpdateFn[] = [];
@@ -200,6 +202,22 @@ export class SceneManager {
     this.controls.zoomSpeed = 0.85;
     this.controls.panSpeed = 0.8;
     this.controls.screenSpacePanning = true;
+    this.controls.autoRotateSpeed = 0.6;
+    // 交互细节：空格切换展示用自动环绕（转盘），R 复位到全景视角；
+    // 输入框聚焦时不拦截，避免影响滑块 / 文本输入
+    const home = { pos: this.camera.position.clone(), tgt: this.controls.target.clone() };
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.controls.autoRotate = !this.controls.autoRotate;
+      } else if (e.code === 'KeyR') {
+        this.camera.position.copy(home.pos);
+        this.controls.target.copy(home.tgt);
+        this.controls.update();
+      }
+    });
 
     // 合成管线默认 RT 不带多重采样，renderer 的 antialias:true 在此不生效，
     // 拉索 / 塔 / 车体边缘会出现阶梯锯齿（显「假」的常见来源）。
@@ -208,6 +226,15 @@ export class SceneManager {
     const composerRT = new THREE.WebGLRenderTarget(dbSize.x, dbSize.y, { samples: 4 });
     this.composer = new EffectComposer(this.renderer, composerRT);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
+    // 环境光遮蔽（GTAO）：程序化场景没有接触阴影会显得「平 / 假」，
+    // 在接缝、桥腹、楼座根部补上真实遮蔽，是低成本高收益的真实感来源。
+    // 仅在全质量档启用，降级 / 中间档自动关闭以保帧率。
+    this.gtao = new GTAOPass(this.scene, this.camera, dbSize.x, dbSize.y);
+    this.gtao.output = GTAOPass.OUTPUT.Default;
+    this.gtao.blendIntensity = 1.0;
+    this.gtao.updateGtaoMaterial({ radius: 5, distanceExponent: 1, thickness: 1, scale: 1, samples: 16, distanceFallOff: 1 });
+    this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 4 });
+    this.composer.addPass(this.gtao);
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.62, 0.42, 0.85);
     this.composer.addPass(this.bloom);
     this.outline = new OutlinePass(new THREE.Vector2(1, 1), this.scene, this.camera);
@@ -262,8 +289,10 @@ export class SceneManager {
   }
 
   private buildEnvironment(): void {
-    // 程序化水面：细分网格 + 波纹顶点位移 + 菲涅尔反射，昼夜共用一套几何
+    // 程序化水面：细分网格 + 波纹顶点位移 + 真实平面反射（镜像相机照出桥/城市），昼夜共用一套几何
     this.waterSurface = new WaterSurface(GEO.waterY);
+    this.waterSurface.setSize(window.innerWidth || 1280, window.innerHeight || 720);
+    this.waterSurface.setReflection(true);
     this.scene.add(this.waterSurface.mesh);
 
     // 地面蓝图线稿（图 2 左下）：放到水面之下，避免网格线盖住波纹
@@ -456,6 +485,8 @@ export class SceneManager {
     this.degraded = v;
     this.bloom.enabled = !v;
     this.fxaa.enabled = !v;
+    this.gtao.enabled = !v;
+    this.waterSurface.setReflection(!v);
     this.starfield.visible = !v;
     this.applyShadowFlags();
     if (v) {
@@ -473,6 +504,7 @@ export class SceneManager {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
     this.composer.setSize(w, h);
+    this.waterSurface.setSize(w, h);
     const pr = this.renderer.getPixelRatio();
     (this.fxaa.material.uniforms['resolution'].value as THREE.Vector2).set(1 / (w * pr), 1 / (h * pr));
   };
@@ -491,6 +523,8 @@ export class SceneManager {
       const minY = GEO.waterY + 2.5;
       if (this.camera.position.y < minY) this.camera.position.y = minY;
       if (this.controls.target.y < GEO.waterY + 1) this.controls.target.y = GEO.waterY + 1;
+      // 真实水面反射：镜像相机额外渲染一次场景到反射 RT（不含水面自身），由 WaterSurface 采样
+      this.waterSurface.renderReflection(this.renderer, this.scene, this.camera);
       this.composer.render();
 
       this.frames++;
@@ -507,9 +541,11 @@ export class SceneManager {
         this.midFpsTime = fps < 42 && fps >= 20 ? this.midFpsTime + this.fpsTimer : 0;
         if (this.midFpsTime >= 3 && !this.degraded && !this.qualityReduced) {
           this.qualityReduced = true;
-          // 中间档先降阴影分辨率与辉光强度，保留 FXAA，避免直接掉进 20 FPS 降级档
+          // 中间档先降阴影分辨率与辉光强度，并关闭 GTAO，保留 FXAA，避免直接掉进 20 FPS 降级档
           this.setShadowMapSize(1024);
           this.bloomScale = 0.78;
+          this.gtao.enabled = false;
+          this.waterSurface.setReflection(false);
           this.applyPixelRatio();
         }
         this.frames = 0;

@@ -68,10 +68,14 @@ export class Viewport {
     this.model.root.add(this.deckDetails.root, this.streetLights.root, this.structuralDetails.root);
 
     this.cameraDirector = new CameraDirector(camera, controls);
+    // 车流：真实轿车 + 货车混合。保留非 low_poly 的轿车，替换掉最廉价的 low_poly 轿车，
+    // 并加入厢式货车 / 平板救援车 / 垃圾车，让桥上有「真实轿车 / 货车」而不仅是玩具小车。
     const vehicleModels = [
-      toVehicleModel(assets.carSkyline ?? null, 4.6),
-      toVehicleModel(assets.carSupra ?? null, 4.8),
-      toVehicleModel(assets.carSilvia ?? null, 4.5),
+      toVehicleModel(assets.carSilvia ?? null, 4.6),   // 轿车
+      toVehicleModel(assets.carSupra ?? null, 4.8),    // 轿车（非 low_poly）
+      toVehicleModel(assets.carB ?? null, 7.6),        // 厢式货车
+      toVehicleModel(assets.rescueTruck ?? null, 7.6), // 平板救援车
+      toVehicleModel(assets.garbageTruck ?? null, 7.8),// 后装垃圾车
     ].filter(Boolean) as NonNullable<ReturnType<typeof toVehicleModel>>[];
     this.traffic = new TrafficEngine(bootstrap.lanes, { vehicleModels });
     scene.add(this.traffic.root);

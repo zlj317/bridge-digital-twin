@@ -216,9 +216,9 @@ export function toVehicleModel(obj: THREE.Object3D | null, targetLen: number): V
   merged.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
 
   const material = keepUV
-    ? new THREE.MeshStandardMaterial({ map: single!.map, roughness: 0.6, metalness: 0.15, side: THREE.DoubleSide })
+    ? new THREE.MeshStandardMaterial({ map: single!.map, roughness: 0.4, metalness: 0.5, side: THREE.DoubleSide, envMapIntensity: 1.0 })
     : new THREE.MeshStandardMaterial({
-        vertexColors: true, roughness: 0.55, metalness: 0.3,
+        vertexColors: true, roughness: 0.42, metalness: 0.45, envMapIntensity: 1.0,
         emissive: 0x0a1018, emissiveIntensity: 0.2, side: THREE.DoubleSide,
       });
   return { geometry: merged, material };

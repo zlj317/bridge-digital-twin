@@ -186,7 +186,7 @@ export class Cityscape {
     [-1, 1].forEach(side => {
       const sys = new PedestrianSystem(human, {
         area: { x0: side * (SHORE_X + 150), x1: side * (LAND_END - 30), z0: -385, z1: 385, y: GROUND_Y + 0.25 },
-        count: 240, avoid, speed: [0.6, 1.7], scale: [0.92, 1.12],
+        count: 240, avoid, speed: [0.6, 1.7], scale: [0.98, 1.14],
       });
       this.cityPeds.push(sys);
       this.root.add(sys.group);
@@ -194,7 +194,7 @@ export class Cityscape {
     [-1, 1].forEach(zSide => {
       const sys = new PedestrianSystem(human, {
         area: { x0: -400, x1: 400, z0: zSide * 22, z1: zSide * 22, y: GEO.deckY + 0.1 },
-        count: 26, axis: 'x', speed: [0.5, 1.4], scale: [0.92, 1.1],
+        count: 26, axis: 'x', speed: [0.5, 1.4], scale: [0.98, 1.12],
       });
       this.deckPeds.push(sys);
       this.root.add(sys.group);

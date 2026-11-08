@@ -90,6 +90,9 @@ const FRAGMENT = /* glsl */`
   uniform float uHalfDeck;
   uniform float uTowerX;
   uniform float uDeckHeight;
+  uniform sampler2D tReflect;
+  uniform mat4 uReflectMatrix;
+  uniform float uReflectStrength;
   varying vec3 vWorld;
   varying float vHeight;
 
@@ -117,8 +120,29 @@ const FRAGMENT = /* glsl */`
 
     vec3 base = mix(uDeep, uShallow, clamp(vHeight * 0.32 + 0.5, 0.0, 1.0));
     base = mix(base, uShoreColor, shore * 0.6);
-    // 天空反射系数下调：水面以水深色为主、反射为辅，不再像一面镜子
-    vec3 color = mix(base, uSky * 0.92, fresnel * (0.20 + 0.20 * uDay));
+
+    // 大尺度 warp：用于扰动反射采样点，让倒影随水面起伏晃动
+    vec2 warp = vec2(
+      sin(vWorld.x * 0.018 + uTime * 0.62) + 0.6 * sin(vWorld.z * 0.033 - uTime * 0.85),
+      sin(vWorld.z * 0.021 - uTime * 0.55) + 0.6 * sin(vWorld.x * 0.029 + uTime * 0.74)
+    );
+
+    // 真实平面反射：把水面镜像相机渲染的桥 / 城市 / 天空采样进来。
+    // 倒影随波纹法线与大尺度 warp 扰动而荡漾；关闭时退化为柔和天空色反射。
+    vec3 reflCol;
+    if (uReflectStrength > 0.001) {
+      vec4 ruv = uReflectMatrix * vec4(vWorld, 1.0);
+      vec2 ruv2 = ruv.xy / max(ruv.w, 1e-4);
+      vec2 distort = N.xz * 0.05 + warp * 0.6;
+      ruv2 += distort * (0.4 + 0.6 * fresnel);
+      reflCol = texture2D(tReflect, ruv2).rgb;
+      reflCol = mix(reflCol, uFogColor, clamp(dist / 2600.0, 0.0, 0.7));
+    } else {
+      reflCol = uSky * 0.92;
+    }
+    float reflAmt = (uReflectStrength > 0.001 ? uReflectStrength : (0.20 + 0.20 * uDay));
+    vec3 color = mix(base, reflCol, clamp(fresnel * reflAmt, 0.0, 0.95));
+
     color += uSunColor * (spec + glint);
     // 风成白沫：波峰 + 近岸拍岸碎浪 + 细节碎沫，让水面像"水"而非平整镜面
     float crest = smoothstep(0.55, 0.95, vHeight);
@@ -127,20 +151,6 @@ const FRAGMENT = /* glsl */`
     float shoreFoam = smoothstep(0.55, 0.95, shore) * 0.7; // 近岸拍岸碎浪
     float foam = (crest * (1.0 - shore * 0.5) + spindrift * 0.5 + shoreFoam) * (0.14 + 0.22 * uDay);
     color = mix(color, vec3(0.84, 0.89, 0.92), clamp(foam, 0.0, 0.45));
-
-    // 桥面 / 桥塔的模糊倒影：用连续波纹扰动采样点，避免插值法线造成方块状破碎
-    vec2 warp = vec2(
-      sin(vWorld.x * 0.018 + uTime * 0.62) + 0.6 * sin(vWorld.z * 0.033 - uTime * 0.85),
-      sin(vWorld.z * 0.021 - uTime * 0.55) + 0.6 * sin(vWorld.x * 0.029 + uTime * 0.74)
-    );
-    vec2 rp = vWorld.xz + warp * 5.0;
-    float deckRef = (1.0 - smoothstep(uHalfDeck * 0.6, uHalfDeck * 2.0, abs(rp.y)))
-                  * (1.0 - smoothstep(370.0, 440.0, abs(rp.x)));
-    float towerDx = min(abs(rp.x - uTowerX), abs(rp.x + uTowerX));
-    float towerRef = (1.0 - smoothstep(6.0, 34.0, towerDx))
-                   * (1.0 - smoothstep(8.0, 38.0, abs(rp.y)));
-    float reflection = clamp(deckRef * 0.22 + towerRef * 0.30, 0.0, 0.5);
-    color *= 1.0 - reflection * (0.34 + 0.58 * uDay);
 
     // 等效贴地阴影：把主梁与塔身轮廓沿太阳方向解析投影到水面。
     // 水面是自定义 ShaderMaterial，无法接收 shadowMap；这里在片元里解析求解，
@@ -164,14 +174,24 @@ const FRAGMENT = /* glsl */`
   }
 `;
 
-/** 程序化水面：细分网格顶点位移 + 解析法线 + 菲涅尔天空反射 + 太阳/月光高光 + 岸边浅滩。
- *  自带昼夜色板，不依赖 envMap，降级时也不隐藏，保证桥下始终能看到水与波纹。 */
+/** 程序化水面：细分网格顶点位移 + 解析法线 + 真实平面反射（镜像相机）+ 菲涅尔 + 太阳/月光高光 + 岸边浅滩。
+ *  自带昼夜色板，不依赖 envMap；反射在降级时自动关闭，保证桥下始终能看到水与波纹。 */
 export class WaterSurface {
   readonly mesh: THREE.Mesh;
   private readonly uniforms: Record<string, THREE.IUniform>;
+  private reflectRT?: THREE.WebGLRenderTarget;
+  private readonly virtualCamera = new THREE.PerspectiveCamera();
+  private readonly textureMatrix = new THREE.Matrix4();
+  private reflectionEnabled = false;
+  // 反射渲染用的临时对象，避免每帧分配
+  private readonly _normal = new THREE.Vector3();
+  private readonly _reflPos = new THREE.Vector3();
+  private readonly _camPos = new THREE.Vector3();
+  private readonly _view = new THREE.Vector3();
+  private readonly _target = new THREE.Vector3();
 
   constructor(y = GEO.waterY) {
-    const geo = new THREE.PlaneGeometry(3600, 3600, 96, 96);
+    const geo = new THREE.PlaneGeometry(3600, 3600, 160, 160);
     geo.rotateX(-Math.PI / 2);
     this.uniforms = {
       uTime: { value: 0 },
@@ -188,6 +208,9 @@ export class WaterSurface {
       uHalfDeck: { value: GEO.halfDeck },
       uTowerX: { value: GEO.towerX },
       uDeckHeight: { value: GEO.deckY - y },
+      tReflect: { value: null },
+      uReflectMatrix: { value: new THREE.Matrix4() },
+      uReflectStrength: { value: 0 },
     };
     const mat = new THREE.ShaderMaterial({
       uniforms: this.uniforms,
@@ -199,6 +222,24 @@ export class WaterSurface {
     this.mesh.position.y = y;
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = -1;
+  }
+
+  /** 分配 / 调整反射 RT 尺寸（按绘制缓冲的 0.5 并封顶，控制开销以保帧率） */
+  setSize(w: number, h: number): void {
+    const rw = Math.min(1280, Math.max(512, Math.floor(w * 0.5)));
+    const rh = Math.min(720, Math.max(288, Math.floor(h * 0.5)));
+    if (!this.reflectRT) {
+      this.reflectRT = new THREE.WebGLRenderTarget(rw, rh, { type: THREE.HalfFloatType, depthBuffer: true });
+      this.uniforms.tReflect.value = this.reflectRT.texture;
+    } else {
+      this.reflectRT.setSize(rw, rh);
+    }
+  }
+
+  /** 反射开关：全质量开启，降级 / 中间档关闭以保护帧率（关闭时水面退化为天空色反射） */
+  setReflection(enabled: boolean): void {
+    this.reflectionEnabled = enabled;
+    this.uniforms.uReflectStrength.value = enabled ? 0.85 : 0;
   }
 
   /** 0 = 夜景，1 = 正午；颜色与雾浓度同步插值 */
@@ -224,8 +265,43 @@ export class WaterSurface {
     (this.uniforms.uCamera.value as THREE.Vector3).copy(camera.position);
   }
 
+  /** 渲染水面镜像反射到 RT：以 y=waterY 平面镜像主相机，渲染场景（不含水面自身），
+   *  产出供片元采样的倒影纹理。每帧调用，开销约为一次额外场景绘制，由 setReflection 控制开关。 */
+  renderReflection(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera): void {
+    if (!this.reflectRT || !this.reflectionEnabled) return;
+    camera.updateMatrixWorld();
+    const normal = this._normal.set(0, 1, 0);
+    const reflPos = this._reflPos.set(0, this.mesh.position.y, 0);
+    const camPos = this._camPos.setFromMatrixPosition(camera.matrixWorld);
+    const view = this._view.copy(reflPos).sub(camPos);
+    if (view.dot(normal) > 0) return; // 相机在水面以下，跳过反射
+    view.reflect(normal).negate().add(reflPos);
+    const target = this._target.copy(view).sub(reflPos).reflect(normal).negate().add(reflPos);
+    const vc = this.virtualCamera;
+    vc.position.copy(view);
+    vc.up.set(0, 1, 0).reflect(normal).normalize();
+    vc.lookAt(target);
+    vc.near = camera.near;
+    vc.far = camera.far;
+    vc.updateMatrixWorld();
+    vc.matrixWorldInverse.copy(vc.matrixWorld).invert();
+    vc.projectionMatrix.copy(camera.projectionMatrix);
+    this.textureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+    this.textureMatrix.multiply(vc.projectionMatrix);
+    this.textureMatrix.multiply(vc.matrixWorldInverse);
+    const prevRT = renderer.getRenderTarget();
+    const wasVisible = this.mesh.visible;
+    this.mesh.visible = false;
+    renderer.setRenderTarget(this.reflectRT);
+    renderer.render(scene, vc);
+    renderer.setRenderTarget(prevRT);
+    this.mesh.visible = wasVisible;
+    (this.uniforms.uReflectMatrix.value as THREE.Matrix4).copy(this.textureMatrix);
+  }
+
   dispose(): void {
     this.mesh.geometry.dispose();
     (this.mesh.material as THREE.Material).dispose();
+    this.reflectRT?.dispose();
   }
 }

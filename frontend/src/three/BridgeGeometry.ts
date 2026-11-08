@@ -173,36 +173,65 @@ export function asphaltTextures(): SurfaceTextures {
 
 /** 混凝土：细骨料 + 模板分节缝 + 底部渐暗（廉价 AO）+ 法线/粗糙度 */
 export function concreteTextures(): SurfaceTextures {
-  const size = 256;
+  const size = 512;
   const { c, ctx } = canvas(size);
   const img = ctx.createImageData(size, size);
   const h = new Float32Array(size * size);
+  // 竖向流挂污渍（模板缝渗水留下水痕）+ 规则模板对拉孔，让混凝土不再是「新浇」的干净块
+  const streaks: { x: number; w: number; d: number; top: number }[] = [];
+  for (let k = 0; k < 56; k++) {
+    streaks.push({
+      x: Math.random() * size,
+      w: 1 + Math.random() * 3,
+      d: 0.12 + Math.random() * 0.26,
+      top: Math.random() * size * 0.55,
+    });
+  }
+  const tieGap = 64;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = y * size + x;
-      h[i] = 0.86 + Math.random() * 0.14;
-      const seam = y % 64 < 2 ? 0.68 : 1;
-      const ao = 0.82 + 0.18 * (1 - y / size);
-      const v = 224 * h[i] * seam * ao;
+      // 基础骨料颗粒噪声
+      let n = 0.82 + Math.random() * 0.18;
+      // 水平模板分节缝（每 64px 一道）+ 缝下阴影，模拟逐段浇筑的施工缝
+      const sd = Math.min(y % tieGap, tieGap - (y % tieGap));
+      let shade = 1;
+      if (sd < 1.5) shade = 0.55;
+      else if (sd < 5) shade = 0.8;
+      // 底部积灰 AO
+      const ao = 0.78 + 0.22 * (1 - y / size);
+      // 竖向流挂污渍：从随机高点向下逐渐变淡的水痕
+      let stain = 0;
+      for (const s of streaks) {
+        const dx = Math.abs(x - s.x);
+        if (dx < s.w && y > s.top) stain = Math.max(stain, s.d * Math.exp(-(y - s.top) / 160));
+      }
+      let v = n * shade * ao - stain * 0.5;
+      if (v < 0.2) v = 0.2;
+      h[i] = v;
+      let r = 224 * v, g = 224 * v + 3, b = 224 * v + 9;
+      // 模板对拉孔（规则小圆点，浇筑时固定模板的拉杆留下的凹坑）
+      const tx = x % tieGap, ty = y % tieGap;
+      if (tx > 26 && tx < 30 && ty > 26 && ty < 30) {
+        const dd = Math.hypot(tx - 28, ty - 28);
+        if (dd < 1.8) { r *= 0.6; g *= 0.6; b *= 0.62; h[i] = v * 0.7; }
+      }
       const p = i * 4;
-      img.data[p] = v;
-      img.data[p + 1] = v + 3;
-      img.data[p + 2] = v + 8;
-      img.data[p + 3] = 255;
+      img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
   const rough = canvas(size);
   const rimg = rough.ctx.createImageData(size, size);
   for (let i = 0; i < h.length; i++) {
-    const v = 214 + Math.round((1 - h[i]) * 60);
+    const v = 200 + Math.round((1 - h[i]) * 70);
     rimg.data[i * 4] = rimg.data[i * 4 + 1] = rimg.data[i * 4 + 2] = v;
     rimg.data[i * 4 + 3] = 255;
   }
   rough.ctx.putImageData(rimg, 0, 0);
   return {
     map: toTexture(c, true),
-    normalMap: normalTexture(h, size, 1.1),
+    normalMap: normalTexture(h, size, 1.4),
     roughnessMap: toTexture(rough.c, false),
   };
 }

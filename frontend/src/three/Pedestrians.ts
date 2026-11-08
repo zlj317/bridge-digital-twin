@@ -26,24 +26,37 @@ const part = (g: THREE.BufferGeometry, x: number, y: number, z: number): THREE.B
 };
 
 /**
- * 站立人体：皮肤（头 + 手）与衣物（躯干 + 双臂 + 双腿）分成两组几何，
- * 便于用两个 InstancedMesh 各自上色。腿部取迈步姿态，配合逐帧上下起伏即像在行走。
- * 脚底位于 y=0，总高约 1.72m，比例按真实成人。
+ * 肢体几何：把杆件的上端（肩 / 髋）放在局部原点，向下延伸 len；
+ * 这样实例矩阵绕该原点旋转时，肢体就是「以肩 / 髋为轴摆动」，而不是绕脚平移。
  */
-export function buildHumanoid(): { skin: THREE.BufferGeometry; cloth: THREE.BufferGeometry } {
+function makeLimb(sideX: number, w: number, len: number, d: number): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, len, d);
+  g.translate(sideX, -len / 2, 0); // 顶端落在 y=0（肩 / 髋）
+  return g.toNonIndexed();
+}
+
+/**
+ * 站立人体，分成 6 组几何：皮肤（头 + 手）、躯干、左/右臂、左/右腿。
+ * 四肢以肩 / 髋为枢轴，可逐帧绕 X 轴摆动做真实步态。
+ * 脚底 y=0，总高约 1.78m，头较小、躯干修长，比例贴近真实成人（解决「太矮/像玩具」）。
+ */
+export function buildHumanoid(): {
+  skin: THREE.BufferGeometry; torso: THREE.BufferGeometry;
+  armL: THREE.BufferGeometry; armR: THREE.BufferGeometry;
+  legL: THREE.BufferGeometry; legR: THREE.BufferGeometry;
+} {
   const skin = mergeNonIndexed([
-    part(new THREE.SphereGeometry(0.135, 10, 8), 0, 1.58, 0),     // 头
-    part(new THREE.SphereGeometry(0.06, 6, 5), 0.30, 0.92, 0.04), // 右手
-    part(new THREE.SphereGeometry(0.06, 6, 5), -0.30, 0.92, 0.04),// 左手
+    part(new THREE.SphereGeometry(0.11, 12, 10), 0, 1.66, 0),        // 头
+    part(new THREE.SphereGeometry(0.05, 6, 5), 0.24, 1.06, 0.05),   // 右手
+    part(new THREE.SphereGeometry(0.05, 6, 5), -0.24, 1.06, 0.05),  // 左手
   ]);
-  const cloth = mergeNonIndexed([
-    part(new THREE.BoxGeometry(0.44, 0.56, 0.26), 0, 1.16, 0),    // 躯干
-    part(new THREE.BoxGeometry(0.12, 0.46, 0.14), 0.30, 1.16, 0.04), // 右臂
-    part(new THREE.BoxGeometry(0.12, 0.46, 0.14), -0.30, 1.16, 0.04),// 左臂
-    part(new THREE.BoxGeometry(0.20, 0.90, 0.24), 0.13, 0.45, 0.12), // 右腿（迈步前）
-    part(new THREE.BoxGeometry(0.20, 0.90, 0.24), -0.13, 0.45, -0.12),// 左腿（迈步后）
-  ]);
-  return { skin, cloth };
+  const torso = part(new THREE.BoxGeometry(0.38, 0.62, 0.23), 0, 1.18, 0);
+  // 肩高 ~1.46，髋高 ~0.92（局部坐标，随实例缩放）
+  const armR = makeLimb(0.24, 0.11, 0.50, 0.13);
+  const armL = makeLimb(-0.24, 0.11, 0.50, 0.13);
+  const legR = makeLimb(0.11, 0.16, 0.92, 0.19);
+  const legL = makeLimb(-0.11, 0.16, 0.92, 0.19);
+  return { skin, torso, armL, armR, legL, legR };
 }
 
 /**
@@ -88,35 +101,56 @@ interface Ped {
   axis: 'x' | 'z'; y: number; sc: number; face: number;
 }
 
+const SHOULDER_Y = 1.46;
+const HIP_Y = 0.92;
+
 /**
- * 实例化行人系统：皮肤 / 衣物两个 InstancedMesh 共享同一组变换，逐帧沿街道行走并上下起伏。
- * 衣物用随机服装色、皮肤用随机肤色（instanceColor），避免「复制人」的塑料感。
+ * 实例化行人系统：皮肤 / 躯干 / 四肢共 6 个 InstancedMesh。
+ * 逐帧沿街道行走，四肢以肩 / 髋为轴反相摆动（对侧手脚同相），并随步频上下起伏与轻微前倾，
+ * 解决「动作僵」；衣物用随机服装色、皮肤用随机肤色（instanceColor），避免「复制人」塑料感。
  */
 export class PedestrianSystem {
   readonly group = new THREE.Group();
   private skinMesh: THREE.InstancedMesh;
-  private clothMesh: THREE.InstancedMesh;
+  private torsoMesh: THREE.InstancedMesh;
+  private armLMesh: THREE.InstancedMesh;
+  private armRMesh: THREE.InstancedMesh;
+  private legLMesh: THREE.InstancedMesh;
+  private legRMesh: THREE.InstancedMesh;
   private peds: Ped[] = [];
   private readonly area: PedestrianArea;
   private readonly skinMat: THREE.MeshStandardMaterial;
   private readonly clothMat: THREE.MeshStandardMaterial;
   private readonly Y = new THREE.Vector3(0, 1, 0);
+  private readonly _lean = new THREE.Matrix4();
 
-  constructor(human: { skin: THREE.BufferGeometry; cloth: THREE.BufferGeometry }, opts: PedestrianOptions) {
+  constructor(
+    human: {
+      skin: THREE.BufferGeometry; torso: THREE.BufferGeometry;
+      armL: THREE.BufferGeometry; armR: THREE.BufferGeometry;
+      legL: THREE.BufferGeometry; legR: THREE.BufferGeometry;
+    },
+    opts: PedestrianOptions,
+  ) {
     this.area = opts.area;
-    this.skinMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0 });
+    this.skinMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75, metalness: 0 });
     this.clothMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
+    const mk = (geo: THREE.BufferGeometry) => new THREE.InstancedMesh(geo, this.clothMat, opts.count);
     this.skinMesh = new THREE.InstancedMesh(human.skin, this.skinMat, opts.count);
-    this.clothMesh = new THREE.InstancedMesh(human.cloth, this.clothMat, opts.count);
+    this.torsoMesh = mk(human.torso);
+    this.armLMesh = mk(human.armL);
+    this.armRMesh = mk(human.armR);
+    this.legLMesh = mk(human.legL);
+    this.legRMesh = mk(human.legR);
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
     const skinCol = new THREE.Color();
     const clothCol = new THREE.Color();
-    const speed = opts.speed ?? [0.6, 1.6];
-    const scale = opts.scale ?? [0.95, 1.12];
     const tmp = new THREE.Color();
+    const speed = opts.speed ?? [0.6, 1.6];
+    const scale = opts.scale ?? [0.98, 1.12];
 
     for (let i = 0; i < opts.count; i++) {
       const axis = opts.axis ?? (Math.random() < 0.5 ? 'x' : 'z');
@@ -139,24 +173,30 @@ export class PedestrianSystem {
       s.set(sc, sc, sc);
       m.compose(p, q, s);
       this.skinMesh.setMatrixAt(i, m);
-      this.clothMesh.setMatrixAt(i, m);
-      // 随机服装色（低饱和）与肤色
-      clothCol.setHSL(0.02 + Math.random() * 0.95, 0.25 + Math.random() * 0.35, 0.32 + Math.random() * 0.28);
-      skinCol.setHSL(0.07 + Math.random() * 0.04, 0.35 + Math.random() * 0.2, 0.45 + Math.random() * 0.2);
-      this.clothMesh.setColorAt(i, tmp.copy(clothCol));
+      this.torsoMesh.setMatrixAt(i, m);
+      this.armLMesh.setMatrixAt(i, m);
+      this.armRMesh.setMatrixAt(i, m);
+      this.legLMesh.setMatrixAt(i, m);
+      this.legRMesh.setMatrixAt(i, m);
+      // 随机服装色（低饱和）+ 肤色；衣物各部件同色，皮肤单独着色
+      clothCol.setHSL(0.02 + Math.random() * 0.95, 0.22 + Math.random() * 0.33, 0.30 + Math.random() * 0.26);
+      skinCol.setHSL(0.07 + Math.random() * 0.04, 0.35 + Math.random() * 0.2, 0.42 + Math.random() * 0.2);
+      this.torsoMesh.setColorAt(i, tmp.copy(clothCol));
+      this.armLMesh.setColorAt(i, tmp.copy(clothCol));
+      this.armRMesh.setColorAt(i, tmp.copy(clothCol));
+      this.legLMesh.setColorAt(i, tmp.copy(clothCol));
+      this.legRMesh.setColorAt(i, tmp.copy(clothCol));
       this.skinMesh.setColorAt(i, tmp.copy(skinCol));
     }
-    this.skinMesh.instanceMatrix.needsUpdate = true;
-    this.clothMesh.instanceMatrix.needsUpdate = true;
-    if (this.skinMesh.instanceColor) this.skinMesh.instanceColor.needsUpdate = true;
-    if (this.clothMesh.instanceColor) this.clothMesh.instanceColor.needsUpdate = true;
-    this.skinMesh.frustumCulled = false;
-    this.clothMesh.frustumCulled = false;
-    this.skinMesh.castShadow = false;
-    this.clothMesh.castShadow = false;
-    this.skinMesh.receiveShadow = false;
-    this.clothMesh.receiveShadow = false;
-    this.group.add(this.skinMesh, this.clothMesh);
+    [this.skinMesh, this.torsoMesh, this.armLMesh, this.armRMesh, this.legLMesh, this.legRMesh]
+      .forEach(mesh => {
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        mesh.frustumCulled = false;
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+      });
+    this.group.add(this.skinMesh, this.torsoMesh, this.armLMesh, this.armRMesh, this.legLMesh, this.legRMesh);
   }
 
   setDayFactor(_d: number): void {
@@ -164,13 +204,18 @@ export class PedestrianSystem {
   }
 
   update(dt: number): void {
-    const m = new THREE.Matrix4();
+    const body = new THREE.Matrix4();
+    const limb = new THREE.Matrix4();
+    const pivot = new THREE.Matrix4();
+    const swing = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3();
+
     for (let i = 0; i < this.peds.length; i++) {
       const ped = this.peds[i];
-      ped.phase += dt * ped.speed * 3;
+      // 步频：腿每步摆动一次，phase 推进速度随步速
+      ped.phase += dt * ped.speed * 3.4;
       if (ped.axis === 'x') {
         ped.x += ped.dir * ped.speed * dt;
         if (ped.x > this.area.x1) { ped.x = this.area.x1; ped.dir *= -1; ped.face = -Math.PI / 2; }
@@ -180,15 +225,42 @@ export class PedestrianSystem {
         if (ped.z > this.area.z1) { ped.z = this.area.z1; ped.dir *= -1; ped.face = Math.PI; }
         if (ped.z < this.area.z0) { ped.z = this.area.z0; ped.dir *= -1; ped.face = 0; }
       }
-      const bob = Math.abs(Math.sin(ped.phase)) * 0.04 * ped.sc;
+      const ph = ped.phase;
+      const legSwing = Math.sin(ph) * 0.5;          // 左腿前摆时右腿后摆
+      const armSwing = Math.sin(ph + Math.PI) * 0.42; // 手臂与同侧腿反相
+      const lean = Math.sin(ph) * 0.05;             // 随步轻微前倾
+      const bob = Math.abs(Math.sin(ph)) * 0.035 * ped.sc;
       p.set(ped.x, ped.y + bob, ped.z);
       q.setFromAxisAngle(this.Y, ped.face);
       s.set(ped.sc, ped.sc, ped.sc);
-      m.compose(p, q, s);
-      this.skinMesh.setMatrixAt(i, m);
-      this.clothMesh.setMatrixAt(i, m);
+      body.compose(p, q, s);
+
+      // 躯干 + 皮肤随身体前倾
+      this._lean.makeRotationX(lean);
+      limb.copy(body).multiply(this._lean);
+      this.torsoMesh.setMatrixAt(i, limb);
+      this.skinMesh.setMatrixAt(i, limb);
+
+      // 四肢：绕肩 / 髋枢轴摆动（对侧反相）
+      pivot.makeTranslation(0, SHOULDER_Y, 0);
+      swing.makeRotationX(armSwing);
+      limb.copy(body).multiply(pivot).multiply(swing);
+      this.armRMesh.setMatrixAt(i, limb);
+      pivot.makeTranslation(0, SHOULDER_Y, 0);
+      swing.makeRotationX(-armSwing);
+      limb.copy(body).multiply(pivot).multiply(swing);
+      this.armLMesh.setMatrixAt(i, limb);
+
+      pivot.makeTranslation(0, HIP_Y, 0);
+      swing.makeRotationX(legSwing);
+      limb.copy(body).multiply(pivot).multiply(swing);
+      this.legRMesh.setMatrixAt(i, limb);
+      pivot.makeTranslation(0, HIP_Y, 0);
+      swing.makeRotationX(-legSwing);
+      limb.copy(body).multiply(pivot).multiply(swing);
+      this.legLMesh.setMatrixAt(i, limb);
     }
-    this.skinMesh.instanceMatrix.needsUpdate = true;
-    this.clothMesh.instanceMatrix.needsUpdate = true;
+    [this.skinMesh, this.torsoMesh, this.armLMesh, this.armRMesh, this.legLMesh, this.legRMesh]
+      .forEach(mesh => { mesh.instanceMatrix.needsUpdate = true; });
   }
 }
