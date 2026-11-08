@@ -4,7 +4,7 @@ import { ComponentRegistry } from './ComponentRegistry';
 import type { AssetBundle } from './AssetLoader';
 import { toStaticProp } from './AssetLoader';
 import {
-  boxGirderGeometry, cloneRepeat, concreteTextures, saggedCablePoint, taperedColumnGeometry,
+  asphaltTextures, boxGirderGeometry, cloneRepeat, concreteTextures, saggedCablePoint, taperedColumnGeometry,
 } from './BridgeGeometry';
 
 /** 程序化分层建模：文档 6.1「结构分层，不整桥一 mesh」。
@@ -285,8 +285,15 @@ export function buildBridge(assets?: AssetBundle): BridgeModel {
   const towers = { group: towerGroup, legs, beams, edges: towerEdges };
 
   // ================= 实体：主梁 / 桥面 / 发光带 / 车道线 =================
-  const shellMat = pushSolid(standard(COLORS.girder, { metalness: 0.52, roughness: 0.54, side: THREE.DoubleSide }));
-  const deckMat = pushSolid(standard(COLORS.asphalt, { metalness: 0.04, roughness: 0.94 }));
+  // 钢箱梁：哑光金属（低金属度 + 高粗糙度），白天不再像光滑塑料块；
+  // 节段间靠 instanceColor 施工色差拉开明暗，呈现真实分节段悬臂梁
+  const shellMat = pushSolid(standard(COLORS.girder, { metalness: 0.2, roughness: 0.85, side: THREE.DoubleSide }));
+  // 桥面沥青：骨料颗粒 + 伸缩缝 + 车辙带（PBR 三张贴图），不再是一整块纯色平板
+  const deckPBR = asphaltTextures();
+  const deckMat = pushSolid(standard(COLORS.asphalt, {
+    map: deckPBR.map, normalMap: deckPBR.normalMap, roughnessMap: deckPBR.roughnessMap,
+    metalness: 0.04, roughness: 0.96,
+  }));
   const glowMat = new THREE.MeshBasicMaterial({ color: COLORS.cyan, transparent: true, opacity: 0, depthWrite: false });
   const laneMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
 
@@ -295,6 +302,12 @@ export function buildBridge(assets?: AssetBundle): BridgeModel {
   const stiffenerCols = Math.max(4, Math.round(GEO.deckW / 6.5));  // 加劲肋列数
   const tendonCount = Math.max(4, Math.round(GEO.deckW / 6));      // 预应力束根数
   const shell = makeInstanced(shellMat, GEO.segmentCount, 'GIRDER', boxGirderGeometry());
+  // 节段施工色差：相邻节段轻微明暗起伏，打破「一片纯色」的连续塑料感
+  const segTint = new THREE.Color();
+  for (let i = 0; i < GEO.segmentCount; i++) {
+    shell.setColorAt(i, segTint.setScalar(0.9 + ((i * 37) % 11) / 55));
+  }
+  if (shell.instanceColor) shell.instanceColor.needsUpdate = true;
   const deck = makeInstanced(deckMat, GEO.segmentCount, 'GIRDER');
   const glow = makeInstanced(glowMat, GEO.segmentCount * 2, 'GIRDER');
   const laneLines = makeInstanced(laneMat, GEO.segmentCount * laneCount, 'PAVEMENT');
@@ -343,9 +356,10 @@ export function buildBridge(assets?: AssetBundle): BridgeModel {
   registry.registerObject('INNER', 'INNER', innerGroup, 'INNER');
 
   // ================= 实体：72 根拉索（实例化，逐根可拾取/显隐） =================
-  // PE 护套索体：白天是浅灰白实体，夜间由 emissiveIntensity 亮化成青色轮廓
-  const cableMat = pushSolid(standard(0xd7e2ea, {
-    emissive: COLORS.cyan, emissiveIntensity: 0, metalness: 0.32, roughness: 0.55,
+  // PE 护套索体：真实 HDPE 护套是哑光近白色，不是金属管。低金属度 + 高粗糙度，
+  // 白天呈哑光护套而非「塑料/金属」高光，夜间再由 emissive 亮化成青色轮廓
+  const cableMat = pushSolid(standard(0xe3eaf0, {
+    emissive: COLORS.cyan, emissiveIntensity: 0, metalness: 0.04, roughness: 0.82,
   }));
   const cableGeo = new THREE.CylinderGeometry(0.21, 0.21, 1, 10, 1);
   const cableMesh = new THREE.InstancedMesh(cableGeo, cableMat, CABLES.length * CABLE_SEGMENTS);

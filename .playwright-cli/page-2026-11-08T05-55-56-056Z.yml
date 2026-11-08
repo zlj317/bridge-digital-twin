@@ -1,0 +1,1 @@
+- generic [active] [ref=f1e1]: "初始化失败：TypeError: Cannot read properties of null (reading 'computeVertexNormals')"

@@ -12,8 +12,8 @@ const NIGHT = {
   density: 0.0008,
 };
 const DAY = {
-  deep: new THREE.Color(0x0f3552),
-  shallow: new THREE.Color(0x246a86),
+  deep: new THREE.Color(0x0c2c46),
+  shallow: new THREE.Color(0x1f5e78),
   sky: new THREE.Color(0xa9cbea),
   // 远水取冷灰蓝而非土黄：土黄浅滩会在远处连成一大块「平板陆地」，把楼群衬得像泡在水里
   shore: new THREE.Color(0x5b7787),
@@ -25,19 +25,40 @@ const DAY = {
 const VERTEX = /* glsl */`
   uniform float uTime;
   varying vec3 vWorld;
-  varying vec3 vWaveNormal;
   varying float vHeight;
 
-  float waveField(vec2 p, float t) {
-    // 低频相位扰动打散多层正弦的干涉，避免水面出现规则棋盘格
-    float warp = 6.0 * sin(p.x * 0.006 + p.y * 0.009 + t * 0.21)
-               + 3.0 * sin(p.x * -0.011 + p.y * 0.004 - t * 0.33);
-    float w = 0.0;
-    w += 0.58 * sin(p.x * 0.019 + p.y * 0.017 + warp * 0.35 + t * 0.85);
-    w += 0.34 * sin(p.x * -0.013 + p.y * 0.029 + warp * 0.22 + t * 1.15);
-    w += 0.15 * sin(p.x * 0.057 + p.y * -0.043 + t * 2.05);
-    w += 0.07 * sin(p.x * 0.121 + p.y * 0.097 + t * 3.10);
-    return w;
+  // 波场：返回 (高度, dH/dx, dH/dz)。解析导数让片元法线与顶点位移严格同源，
+  // 不再经过 96x96 网格插值 —— 任何距离下都不会出现规则菱形网纹。
+  vec3 waveField(vec2 p, float t) {
+    float wa = p.x * 0.006 + p.y * 0.009 + t * 0.21;
+    float wb = p.x * -0.011 + p.y * 0.004 - t * 0.33;
+    float warp = 6.0 * sin(wa) + 3.0 * sin(wb);
+    vec2 wg = 6.0 * cos(wa) * vec2(0.006, 0.009)
+            + 3.0 * cos(wb) * vec2(-0.011, 0.004);
+
+    float h = 0.0;
+    vec2 g = vec2(0.0);
+    vec2 k;
+    float a;
+    float arg;
+
+    k = vec2(0.019, 0.017); a = 0.58;
+    arg = k.x * p.x + k.y * p.y + warp * 0.35 + t * 1.06;
+    h += a * sin(arg); g += a * cos(arg) * (k + 0.35 * wg);
+
+    k = vec2(-0.013, 0.029); a = 0.42;
+    arg = k.x * p.x + k.y * p.y + warp * 0.22 + t * 1.5;
+    h += a * sin(arg); g += a * cos(arg) * (k + 0.22 * wg);
+
+    k = vec2(0.057, -0.043); a = 0.16;
+    arg = k.x * p.x + k.y * p.y + t * 2.6;
+    h += a * sin(arg); g += a * cos(arg) * k;
+
+    k = vec2(0.121, 0.097); a = 0.08;
+    arg = k.x * p.x + k.y * p.y + t * 3.8;
+    h += a * sin(arg); g += a * cos(arg) * k;
+
+    return vec3(h, g);
   }
 
   void main() {
@@ -46,13 +67,9 @@ const VERTEX = /* glsl */`
     // 远水 / 浅滩的波纹衰减拉长，避免突然变成一整块静止的平板
     float shore = smoothstep(240.0, 520.0, abs(q.y));
     float amp = mix(1.0, 0.18, shore);
-    float h = waveField(q, uTime) * amp;
-    p.y += h;
-    float e = 1.5;
-    float hx = waveField(q + vec2(e, 0.0), uTime) - waveField(q - vec2(e, 0.0), uTime);
-    float hz = waveField(q + vec2(0.0, e), uTime) - waveField(q - vec2(0.0, e), uTime);
-    vWaveNormal = normalize(vec3(-hx * amp / (2.0 * e), 1.0, -hz * amp / (2.0 * e)));
-    vHeight = h;
+    vec3 w = waveField(q, uTime);
+    p.y += w.x * amp;
+    vHeight = w.x * amp;
     vWorld = (modelMatrix * vec4(p, 1.0)).xyz;
     gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);
   }
@@ -74,33 +91,42 @@ const FRAGMENT = /* glsl */`
   uniform float uTowerX;
   uniform float uDeckHeight;
   varying vec3 vWorld;
-  varying vec3 vWaveNormal;
   varying float vHeight;
 
   void main() {
     vec3 V = normalize(uCamera - vWorld);
     float dist = length(uCamera - vWorld);
-    // 细碎的二次波纹，打破大尺度正弦的规则感
-    float ripple = sin(vWorld.x * 0.34 + uTime * 2.4) * sin(vWorld.z * 0.29 - uTime * 1.7);
-    // vWaveNormal 是 37.5m 网格上的插值量，直接用于高光会显出菱形面片；
-    // 压低其低频倾斜，叠加逐像素连续波纹，远近水面都保持平滑
+    // 细碎的二次波纹，打破大尺度正弦的规则感；整体提速让水面有明显流动感
+    float ripple = sin(vWorld.x * 0.34 + uTime * 3.2) * sin(vWorld.z * 0.29 - uTime * 2.3);
+    // 逐像素解析法线：与顶点同一波场求导，没有网格插值，远近都是连续水面
+    float shore = smoothstep(240.0, 520.0, abs(vWorld.z));
+    float amp = mix(1.0, 0.18, shore);
+    vec3 w = waveField(vWorld.xz, uTime);
+    vec2 grad = w.yz * amp;
+    float detAmp = 1.0 - shore * 0.7;
     vec3 N = normalize(vec3(
-      vWaveNormal.x * 0.30 + sin(vWorld.x * 0.11 + uTime * 1.05) * 0.055 + ripple * 0.018,
+      -grad.x * 0.42 + (sin(vWorld.x * 0.11 + uTime * 1.4) * 0.05 + ripple * 0.016) * detAmp,
       1.0,
-      vWaveNormal.z * 0.30 + sin(vWorld.z * 0.13 - uTime * 0.92) * 0.055 + ripple * 0.016
+      -grad.y * 0.42 + (sin(vWorld.z * 0.13 - uTime * 1.2) * 0.05 + ripple * 0.014) * detAmp
     ));
     float fresnel = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
     vec3 H = normalize(uSunDir + V);
-    float spec = pow(max(dot(N, H), 0.0), 110.0) * (0.30 + 0.70 * uDay);
-    float glint = pow(max(dot(N, H), 0.0), 42.0) * (1.0 - uDay) * 0.14;
+    // 太阳高光压低并放宽，避免白天水面上出现刺眼的镜面亮斑（「太亮/太镜面」主因）
+    float spec = pow(max(dot(N, H), 0.0), 80.0) * (0.14 + 0.42 * uDay);
+    float glint = pow(max(dot(N, H), 0.0), 42.0) * (1.0 - uDay) * 0.10;
 
     vec3 base = mix(uDeep, uShallow, clamp(vHeight * 0.32 + 0.5, 0.0, 1.0));
-    float shore = smoothstep(240.0, 520.0, abs(vWorld.z));
     base = mix(base, uShoreColor, shore * 0.6);
-    vec3 color = mix(base, uSky, fresnel * (0.32 + 0.45 * uDay));
+    // 天空反射系数下调：水面以水深色为主、反射为辅，不再像一面镜子
+    vec3 color = mix(base, uSky * 0.92, fresnel * (0.20 + 0.20 * uDay));
     color += uSunColor * (spec + glint);
-    float foam = smoothstep(0.62, 0.92, vHeight + ripple * 0.05) * (1.0 - shore);
-    color += vec3(0.26, 0.32, 0.36) * foam * (0.07 + 0.14 * uDay);
+    // 风成白沫：波峰 + 近岸拍岸碎浪 + 细节碎沫，让水面像"水"而非平整镜面
+    float crest = smoothstep(0.55, 0.95, vHeight);
+    float spindrift = smoothstep(0.62, 0.98, 0.5 + 0.5 * sin(vWorld.x * 0.6 + uTime * 3.1) * sin(vWorld.z * 0.5 - uTime * 2.6));
+    spindrift *= 1.0 - smoothstep(500.0, 1300.0, dist);   // 远处避免高频闪烁走样
+    float shoreFoam = smoothstep(0.55, 0.95, shore) * 0.7; // 近岸拍岸碎浪
+    float foam = (crest * (1.0 - shore * 0.5) + spindrift * 0.5 + shoreFoam) * (0.14 + 0.22 * uDay);
+    color = mix(color, vec3(0.84, 0.89, 0.92), clamp(foam, 0.0, 0.45));
 
     // 桥面 / 桥塔的模糊倒影：用连续波纹扰动采样点，避免插值法线造成方块状破碎
     vec2 warp = vec2(
@@ -113,8 +139,8 @@ const FRAGMENT = /* glsl */`
     float towerDx = min(abs(rp.x - uTowerX), abs(rp.x + uTowerX));
     float towerRef = (1.0 - smoothstep(6.0, 34.0, towerDx))
                    * (1.0 - smoothstep(8.0, 38.0, abs(rp.y)));
-    float reflection = clamp(deckRef * 0.22 + towerRef * 0.30, 0.0, 0.42);
-    color *= 1.0 - reflection * (0.4 + 0.6 * uDay);
+    float reflection = clamp(deckRef * 0.22 + towerRef * 0.30, 0.0, 0.5);
+    color *= 1.0 - reflection * (0.34 + 0.58 * uDay);
 
     // 等效贴地阴影：把主梁与塔身轮廓沿太阳方向解析投影到水面。
     // 水面是自定义 ShaderMaterial，无法接收 shadowMap；这里在片元里解析求解，

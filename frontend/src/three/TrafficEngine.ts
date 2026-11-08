@@ -34,6 +34,32 @@ function flatPlane(w: number, h: number): THREE.PlaneGeometry {
   return g;
 }
 
+/** 把若干 Box 合并为一个非索引几何（车身 + 车顶 / 车头 + 货厢），避免使用
+ *  examples 的 BufferGeometryUtils 引发双 three 实例；让无资产兜底车型不再是方块。 */
+function mergeBoxes(boxes: Array<{ size: [number, number, number]; pos: [number, number, number] }>): THREE.BufferGeometry {
+  const geos = boxes.map(b => {
+    const g = new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]);
+    g.translate(b.pos[0], b.pos[1], b.pos[2]);
+    return g.toNonIndexed();
+  });
+  let total = 0;
+  geos.forEach(g => { total += g.getAttribute('position').count; });
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  let o = 0;
+  geos.forEach(g => {
+    const p = g.getAttribute('position');
+    const n = g.getAttribute('normal');
+    (pos as Float32Array).set(p.array as ArrayLike<number>, o * 3);
+    (nor as Float32Array).set(n.array as ArrayLike<number>, o * 3);
+    o += p.count;
+  });
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  merged.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  return merged;
+}
+
 /** 灰度径向渐变 alphaMap：让贴地阴影 / 灯光边缘柔和消失，避免出现硬边矩形色块 */
 function falloffTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -88,16 +114,25 @@ export class TrafficEngine {
     } else {
       this.fallbackMode = true;
       const carMat = new THREE.MeshStandardMaterial({
-        color: 0x7f9dc4, metalness: 0.55, roughness: 0.35, emissive: 0x123354, emissiveIntensity: 0.5,
+        color: 0x7f9dc4, metalness: 0.4, roughness: 0.5, emissive: 0x123354, emissiveIntensity: 0.5,
       });
       const truckMat = new THREE.MeshStandardMaterial({
-        color: 0x9aa8bb, metalness: 0.4, roughness: 0.5, emissive: 0x2a2410, emissiveIntensity: 0.45,
+        color: 0x9aa8bb, metalness: 0.35, roughness: 0.6, emissive: 0x2a2410, emissiveIntensity: 0.45,
       });
+      // 兜底车型：车身 + 车顶的两段式轮廓，不再是单一方块
+      const carGeo = mergeBoxes([
+        { size: [4.6, 1.1, 1.9], pos: [0, 0, 0] },
+        { size: [2.6, 0.9, 1.7], pos: [-0.3, 0.95, 0] },
+      ]);
+      const truckGeo = mergeBoxes([
+        { size: [3.2, 2.6, 2.5], pos: [-3.0, 1.3, 0] },
+        { size: [6.0, 3.0, 2.5], pos: [1.4, 1.5, 0] },
+      ]);
       this.vehicleMeshes = [
-        new THREE.InstancedMesh(new THREE.BoxGeometry(4.6, 1.5, 1.9), carMat, MAX),
-        new THREE.InstancedMesh(new THREE.BoxGeometry(9.5, 3.4, 2.5), truckMat, MAX),
+        new THREE.InstancedMesh(carGeo, carMat, MAX),
+        new THREE.InstancedMesh(truckGeo, truckMat, MAX),
       ];
-      this.lifts = [1.5 / 2 + 0.2, 3.4 / 2 + 0.2];
+      this.lifts = [0.65, 0.2];
     }
 
     const trailMat = new THREE.MeshBasicMaterial({

@@ -23,6 +23,10 @@ const NIGHT = {
   street: new THREE.Color(0x121c27),
   curb: new THREE.Color(0x33475c),
   pier: new THREE.Color(0x32435a),
+  tree: new THREE.Color(0x16261b),
+  trunk: new THREE.Color(0x161009),
+  boat: new THREE.Color(0x14181f),
+  cabin: new THREE.Color(0x20262e),
 };
 const DAY = {
   building: new THREE.Color(0x6f8091),
@@ -35,7 +39,59 @@ const DAY = {
   street: new THREE.Color(0x3c4146),
   curb: new THREE.Color(0x929a9c),
   pier: new THREE.Color(0x88939f),
+  tree: new THREE.Color(0x4e7c39),
+  trunk: new THREE.Color(0x5b4733),
+  boat: new THREE.Color(0x6b3b2e),
+  cabin: new THREE.Color(0xc9d2da),
 };
+
+/** 程序化建筑立面：混凝土底 + 竖向污渍 + 窗格网格 + 楼层压顶线 + 窗框中梃。
+ *  白天楼群不再是纯色「白积木」，每个侧面都有真实的窗墙节奏；贴图与材质色相乘，
+ *  由 instanceColor 制造楼间色差，昼夜共用。 */
+function facadeTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 512;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#aeb6bf';
+  ctx.fillRect(0, 0, 256, 512);
+  // 竖向水渍 / 雨痕，打破大面积纯色
+  for (let i = 0; i < 32; i++) {
+    const g = 72 + Math.random() * 42;
+    ctx.fillStyle = `rgba(${g},${g + 6},${g + 12},${0.05 + Math.random() * 0.12})`;
+    ctx.fillRect(Math.random() * 256, 0, 4 + Math.random() * 26, 512);
+  }
+  const cols = 6;
+  const rows = 14;
+  const cw = 256 / cols;
+  const rh = 512 / rows;
+  for (let r = 0; r < rows; r++) {
+    // 楼层压顶线
+    ctx.fillStyle = 'rgba(40,46,54,0.55)';
+    ctx.fillRect(0, r * rh, 256, 2.5);
+    for (let ci = 0; ci < cols; ci++) {
+      const pad = cw * 0.22;
+      const x = ci * cw + pad;
+      const y = r * rh + rh * 0.24;
+      const w = cw - pad * 2;
+      const h = rh * 0.5;
+      // 窗玻璃：中灰，随机明度模拟反射 / 开灯
+      const lit = Math.random();
+      const b = 58 + lit * 44;
+      ctx.fillStyle = `rgb(${b},${b + 8},${b + 18})`;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(30,36,44,0.85)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h);
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
 
 /** 岸上地面标高与桥面齐平：楼栋地基不再落在水面 y=-2，而是与桥头引道同一水平线 */
 const GROUND_Y = GEO.deckY;
@@ -70,10 +126,19 @@ export class Cityscape {
   private curbMat: THREE.MeshStandardMaterial;
   private pierMat: THREE.MeshStandardMaterial;
   private windowMat: THREE.PointsMaterial;
+  private trunkMat: THREE.MeshStandardMaterial;
+  private foliageMat: THREE.MeshStandardMaterial;
+  private hullMat: THREE.MeshStandardMaterial;
+  private cabinMat: THREE.MeshStandardMaterial;
+  private boatHull?: THREE.InstancedMesh;
+  private boatCabin?: THREE.InstancedMesh;
+  private boatData: Array<{ x: number; z: number; dir: number; speed: number; len: number }> = [];
   private readonly tmpColor = new THREE.Color();
 
   constructor() {
-    this.buildingMat = new THREE.MeshStandardMaterial({ color: NIGHT.building.clone(), roughness: 0.78, metalness: 0.14 });
+    this.buildingMat = new THREE.MeshStandardMaterial({
+      color: NIGHT.building.clone(), roughness: 0.82, metalness: 0.12, map: facadeTexture(),
+    });
     this.roofMat = new THREE.MeshStandardMaterial({ color: NIGHT.roof.clone(), roughness: 0.7, metalness: 0.3 });
     this.roadMat = new THREE.MeshStandardMaterial({ color: NIGHT.road.clone(), roughness: 0.94, metalness: 0.02 });
     [0.72, 0.86, 1].forEach(k => {
@@ -91,12 +156,18 @@ export class Cityscape {
       transparent: true, opacity: 0.62, depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
+    this.trunkMat = new THREE.MeshStandardMaterial({ color: NIGHT.trunk.clone(), roughness: 0.9, metalness: 0 });
+    this.foliageMat = new THREE.MeshStandardMaterial({ color: NIGHT.tree.clone(), roughness: 0.95, metalness: 0 });
+    this.hullMat = new THREE.MeshStandardMaterial({ color: NIGHT.boat.clone(), roughness: 0.7, metalness: 0.15 });
+    this.cabinMat = new THREE.MeshStandardMaterial({ color: NIGHT.cabin.clone(), roughness: 0.6, metalness: 0.1 });
 
     this.buildApproaches();
     this.buildFarBank();
     const blocks = this.buildBlocks();
     this.buildBuildings(blocks);
     this.buildWindows(blocks);
+    this.buildVegetation(blocks);
+    this.buildWatercraft();
     this.setDayFactor(0);
   }
 
@@ -232,11 +303,11 @@ export class Cityscape {
   private buildBlocks(): Building[] {
     const blocks: Building[] = [];
     [-1, 1].forEach(side => {
-      for (let ix = 0; ix < 4; ix++) {
+      for (let ix = 0; ix < 3; ix++) {
         // 首排退到桥头外 CITY_SETBACK，留出滨江缓冲带；列距与街区路网对齐
-        const x = side * (GEO.halfLength + CITY_SETBACK + ix * 105 + rand(-20, 20));
+        const x = side * (GEO.halfLength + CITY_SETBACK + ix * 120 + rand(-20, 20));
         for (const zSide of [-1, 1]) {
-          for (let iz = 0; iz < 4; iz++) {
+          for (let iz = 0; iz < 3; iz++) {
             const z = zSide * (120 + iz * 70 + rand(-12, 12));
             const near = ix < 2;
             blocks.push({
@@ -269,7 +340,11 @@ export class Cityscape {
   /** 主体 + 裙房 + 顶部收窄段 + 屋顶设备，用 4 个 InstancedMesh 保持极低 draw call */
   private buildBuildings(blocks: Building[]): void {
     const box = new THREE.BoxGeometry(1, 1, 1);
-    const bodies = new THREE.InstancedMesh(box, this.buildingMat, blocks.length);
+    // 材质数组：±X/±Z 侧面用带窗立面贴图，±Y 顶/底用纯色屋面，避免顶部也出现窗格
+    const facadeMat = this.buildingMat;
+    const roofMat = this.roofMat;
+    const bodyMats = [facadeMat, facadeMat, roofMat, roofMat, facadeMat, facadeMat];
+    const bodies = new THREE.InstancedMesh(box, bodyMats, blocks.length);
     const podiums = new THREE.InstancedMesh(box, this.roofMat, blocks.length);
     const crowns = new THREE.InstancedMesh(box, this.roofMat, blocks.length);
     const rooftops = new THREE.InstancedMesh(box, this.roofMat, blocks.length);
@@ -330,6 +405,116 @@ export class Cityscape {
     this.root.add(windows);
   }
 
+  /** 两岸滨水绿地：在台地顶面与街区间的空地撒布低多边形树木。
+   *  树干与树冠用两个 InstancedMesh 共享同一组实例变换，各自参与昼夜变色；
+   *  自动避开楼栋占地，让光秃秃的混凝土岸线变成有生命的滨江公园 */
+  private buildVegetation(blocks: Building[]): void {
+    const trunkGeo = new THREE.CylinderGeometry(0.5, 0.85, 7, 6);
+    trunkGeo.translate(0, 3.5, 0);
+    const canopyGeo = new THREE.IcosahedronGeometry(5.0, 0);
+    canopyGeo.scale(1, 1.12, 1);
+    canopyGeo.translate(0, 10.2, 0);
+
+    const CAP = 760;
+    const trunks = new THREE.InstancedMesh(trunkGeo, this.trunkMat, CAP);
+    const foliage = new THREE.InstancedMesh(canopyGeo, this.foliageMat, CAP);
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3();
+    let placed = 0;
+    const target = 700;
+    const Y = new THREE.Vector3(0, 1, 0);
+    const tint = new THREE.Color();
+    for (let t = 0; t < target * 8 && placed < target; t++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const x = side * rand(SHORE_X + 150, LAND_END - 30);
+      const z = rand(-385, 385);
+      // 避开楼栋占地（含裙房外扩），树自然落在街区间的绿地与缓冲带
+      let hit = false;
+      for (const b of blocks) {
+        if (Math.abs(x - b.x) < b.w * 0.64 + 6 && Math.abs(z - b.z) < b.d * 0.57 + 6) { hit = true; break; }
+      }
+      if (hit) continue;
+      const sc = rand(0.75, 1.7);
+      const sy = sc * rand(0.85, 1.3);   // 树高参差，避免一模一样的复制感
+      p.set(x, GROUND_Y, z);
+      q.setFromAxisAngle(Y, rand(0, Math.PI * 2));
+      s.set(sc, sy, sc);
+      m.compose(p, q, s);
+      trunks.setMatrixAt(placed, m);
+      foliage.setMatrixAt(placed, m);
+      // 逐株绿 / 褐微差，打破「同一支队伍」的塑料感
+      foliage.setColorAt(placed, tint.setScalar(rand(0.8, 1.18)));
+      trunks.setColorAt(placed, tint.setScalar(rand(0.82, 1.12)));
+      placed++;
+    }
+    trunks.count = placed;
+    foliage.count = placed;
+    [trunks, foliage].forEach(mesh => {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.frustumCulled = false;
+      mesh.receiveShadow = true;
+      this.root.add(mesh);
+    });
+  }
+
+  /** 江面航行的船只：少量货轮 / 拖轮沿桥轴缓慢漂移并循环，给空旷江面注入生命感。
+   *  船体 + 舱室用两个 InstancedMesh 共享同一组实例变换；update() 每帧推进位置。 */
+  private buildWatercraft(): void {
+    const hullGeo = new THREE.BoxGeometry(38, 7, 11);
+    const cabinGeo = new THREE.BoxGeometry(13, 6, 9);
+    cabinGeo.translate(8, 6, 0);   // 舱室置于船尾上方（局部 +X 为船尾）
+    const COUNT = 10;
+    const hull = new THREE.InstancedMesh(hullGeo, this.hullMat, COUNT);
+    const cabin = new THREE.InstancedMesh(cabinGeo, this.cabinMat, COUNT);
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3(1, 1, 1);
+    const Y = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < COUNT; i++) {
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const x = rand(-1100, 1100);
+      const z = rand(-300, 300);
+      const speed = rand(3, 7);
+      this.boatData.push({ x, z, dir, speed, len: 38 });
+      p.set(x, GEO.waterY + 2.5, z);
+      q.setFromAxisAngle(Y, dir > 0 ? 0 : Math.PI);
+      m.compose(p, q, s);
+      hull.setMatrixAt(i, m);
+      cabin.setMatrixAt(i, m);
+    }
+    hull.instanceMatrix.needsUpdate = true;
+    cabin.instanceMatrix.needsUpdate = true;
+    [hull, cabin].forEach(mesh => { mesh.frustumCulled = false; this.root.add(mesh); });
+    this.boatHull = hull;
+    this.boatCabin = cabin;
+  }
+
+  /** 每帧推进船只沿桥轴漂移，越界后从对侧循环并随机重置航道 / 速度 */
+  update(dt: number): void {
+    if (!this.boatHull || !this.boatCabin) return;
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3(1, 1, 1);
+    const Y = new THREE.Vector3(0, 1, 0);
+    this.boatData.forEach((b, i) => {
+      b.x += b.dir * b.speed * dt;
+      if (b.dir > 0 && b.x > 1150) { b.x = -1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
+      else if (b.dir < 0 && b.x < -1150) { b.x = 1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
+      p.set(b.x, GEO.waterY + 2.5, b.z);
+      q.setFromAxisAngle(Y, b.dir > 0 ? 0 : Math.PI);
+      m.compose(p, q, s);
+      this.boatHull!.setMatrixAt(i, m);
+      this.boatCabin!.setMatrixAt(i, m);
+    });
+    this.boatHull.instanceMatrix.needsUpdate = true;
+    this.boatCabin.instanceMatrix.needsUpdate = true;
+  }
+
   setDayFactor(f: number): void {
     const d = Math.max(0, Math.min(1, f));
     const pairs: Array<[THREE.MeshStandardMaterial, THREE.Color, THREE.Color]> = [
@@ -341,6 +526,10 @@ export class Cityscape {
       [this.streetMat, NIGHT.street, DAY.street],
       [this.curbMat, NIGHT.curb, DAY.curb],
       [this.pierMat, NIGHT.pier, DAY.pier],
+      [this.foliageMat, NIGHT.tree, DAY.tree],
+      [this.trunkMat, NIGHT.trunk, DAY.trunk],
+      [this.hullMat, NIGHT.boat, DAY.boat],
+      [this.cabinMat, NIGHT.cabin, DAY.cabin],
     ];
     pairs.forEach(([mat, night, day]) => mat.color.copy(night).lerp(day, d));
     // 三级退台保留各自的明度系数，昼夜插值后才不会糊成同一块色

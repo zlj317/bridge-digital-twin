@@ -83,7 +83,8 @@ export function applyFrame(model: BridgeModel, t: number, opts: FrameOptions): F
   // ---- 拉索张拉（7.0~7.5s）+ 流动光点 ----
   const night = opts.nightFactor;
   model.cables.mat.emissiveIntensity = (0.25 + 0.95 * night) * clamp01((t - 7000) / 500);
-  model.cables.flowMat.opacity = (0.35 + 0.55 * night) * clamp01((t - 7500) / 600) * solidP;
+  // 拉索流光：白天极弱（检修示踪），夜间才明显，避免白昼出现一串橙点
+  model.cables.flowMat.opacity = (0.12 + 0.78 * night) * clamp01((t - 7500) / 600) * solidP;
 
   // ---- 幕三：车道线扫描亮起 + 桥侧发光带脉冲（白天关闭发光带，车道线转为实体白） ----
   const laneP = clamp01((t - 7500) / 500);

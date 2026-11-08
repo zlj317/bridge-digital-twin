@@ -113,7 +113,7 @@ export class MockDataSource {
   }
 
   private reconcileVehicles(): void {
-    this.rebalance(Math.round((this.density / 62) * 72));
+    this.rebalance(Math.round((this.density / 62) * 86));
   }
 
   /** 删最靠近桥尾的车、只从桥头有净空的车道补车，杜绝突然换位 / 同位生成 */
@@ -201,9 +201,9 @@ export class MockDataSource {
     if (!this.hooks) return;
     const t = this.elapsed;
     this.advance(1);
-    // 稳态自然波动 68~76 台
+    // 稳态自然波动 ~84~92 台
     const wave = Math.round(Math.sin(t / 9) * 2);
-    this.rebalance(Math.round((this.density / 62) * 72) + wave);
+    this.rebalance(Math.round((this.density / 62) * 86) + wave);
     const list = [...this.vehicles.values()];
     const avgSpeed = list.reduce((s, v) => s + v.speed, 0) / Math.max(1, list.length);
     const stat: TrafficStat = {

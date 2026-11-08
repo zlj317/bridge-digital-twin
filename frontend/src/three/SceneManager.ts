@@ -190,7 +190,7 @@ export class SceneManager {
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
+    this.controls.dampingFactor = 0.1;
     this.controls.maxPolarAngle = 1.45;
     this.controls.minDistance = 40;
     this.controls.maxDistance = 1200;
@@ -201,7 +201,12 @@ export class SceneManager {
     this.controls.panSpeed = 0.8;
     this.controls.screenSpacePanning = true;
 
-    this.composer = new EffectComposer(this.renderer);
+    // 合成管线默认 RT 不带多重采样，renderer 的 antialias:true 在此不生效，
+    // 拉索 / 塔 / 车体边缘会出现阶梯锯齿（显「假」的常见来源）。
+    // 传入 samples:4 的 RT，让几何边缘真正 MSAA；resize 时 EffectComposer 会保留 samples。
+    const dbSize = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    const composerRT = new THREE.WebGLRenderTarget(dbSize.x, dbSize.y, { samples: 4 });
+    this.composer = new EffectComposer(this.renderer, composerRT);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.62, 0.42, 0.85);
     this.composer.addPass(this.bloom);
@@ -272,6 +277,8 @@ export class SceneManager {
     // 两岸城市 + 引道 / 桥台 / 岸地：桥的两端不再是悬在水上的断头
     this.cityscape = new Cityscape();
     this.scene.add(this.cityscape.root);
+    // 江面船只每帧漂移
+    this.addUpdate((dt: number) => this.cityscape.update(dt));
   }
 
   private buildLights(): void {
@@ -405,27 +412,33 @@ export class SceneManager {
 
     const fog = this.scene.fog as THREE.FogExp2;
     fog.color.copy(NIGHT_SKY.fog).lerp(DAY_SKY.fog, d);
-    fog.density = 0.0008 + (0.00045 - 0.0008) * d;
+    // 白天雾稍淡，远景城市/江岸更通透，避免整体发灰
+    fog.density = 0.0008 + (0.00034 - 0.0008) * d;
 
     this.hemi.color.copy(NIGHT_SKY.hemiSky).lerp(DAY_SKY.hemiSky, d);
     this.hemi.groundColor.copy(NIGHT_SKY.hemiGround).lerp(DAY_SKY.hemiGround, d);
-    this.hemi.intensity = 1.0 + 0.9 * d;
+    this.hemi.intensity = 0.7 + 0.7 * d;
     this.ambient.color.copy(NIGHT_SKY.ambient).lerp(DAY_SKY.ambient, d);
-    this.ambient.intensity = 0.55 + 0.35 * d;
+    this.ambient.intensity = 0.4 + 0.35 * d;
     this.sun.color.copy(NIGHT_SKY.sun).lerp(DAY_SKY.sun, d);
-    this.sun.intensity = 1.35 + 1.5 * d;
+    this.sun.intensity = 1.1 + 1.2 * d;
     this.sun.position.set(300, 300 + 180 * d, 260);
     this.applyShadowIntensity();
     // 水面解析投影与高光共用同一太阳方向，桥影随昼夜太阳高度角同步偏移
     this.waterSurface.setSunDirection(
       this.sun.position.clone().sub(this.sun.target.position).normalize(),
     );
-    this.towerLights.forEach(p => { p.intensity = 1.6 * (1 - 0.86 * d); });
+    // 塔顶青色点光夜间增强，给桥体轮廓打上体积感辉光
+    this.towerLights.forEach(p => { p.intensity = 2.2 * (1 - 0.86 * d); });
 
     (this.starfield.material as THREE.PointsMaterial).opacity = 0.55 * (1 - d);
     this.gridMat.opacity = 0.18 * (1 - 0.6 * d);
     this.cityscape.setDayFactor(d);
-    this.renderer.toneMappingExposure = 1.15 - 0.14 * d;
+    this.renderer.toneMappingExposure = 1.12 - 0.14 * d;
+    // 夜景辉光增强（城市灯光 / 车灯 / 拉索轮廓向外晕开），白天收紧只留太阳高光，制造体积感
+    this.bloom.strength = 0.5 + 0.45 * (1 - d);
+    this.bloom.threshold = 0.92 - 0.5 * (1 - d);
+    this.bloom.radius = 0.42 + 0.12 * (1 - d);
     this.waterSurface.setDayFactor(d);
     const wantEnv = d > 0.5 ? this.envDay : this.envNight;
     if (wantEnv && this.scene.environment !== wantEnv) this.scene.environment = wantEnv;
@@ -474,6 +487,10 @@ export class SceneManager {
       this.waterSurface.update(elapsed, this.camera);
       this.updates.forEach(fn => fn(dt, elapsed));
       this.controls.update();
+      // 交互细节：禁止相机与注视点钻到水面以下，避免穿帮看到水面背面
+      const minY = GEO.waterY + 2.5;
+      if (this.camera.position.y < minY) this.camera.position.y = minY;
+      if (this.controls.target.y < GEO.waterY + 1) this.controls.target.y = GEO.waterY + 1;
       this.composer.render();
 
       this.frames++;
