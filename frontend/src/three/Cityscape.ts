@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GEO } from '../config';
+import { buildHumanoid, buildSeatedPerson, PedestrianSystem } from './Pedestrians';
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -133,6 +134,16 @@ export class Cityscape {
   private boatHull?: THREE.InstancedMesh;
   private boatCabin?: THREE.InstancedMesh;
   private boatData: Array<{ x: number; z: number; dir: number; speed: number; len: number }> = [];
+  // 行人系统：城市两岸 + 桥面人行道
+  private cityPeds: PedestrianSystem[] = [];
+  private deckPeds: PedestrianSystem[] = [];
+  // 划船小船：船体 / 坐人（皮肤+衣物）/ 双桨
+  private rowHull?: THREE.InstancedMesh;
+  private rowRowerSkin?: THREE.InstancedMesh;
+  private rowRowerCloth?: THREE.InstancedMesh;
+  private rowOarA?: THREE.InstancedMesh;
+  private rowOarB?: THREE.InstancedMesh;
+  private rowData: Array<{ x: number; z: number; dir: number; speed: number; len: number; rowPhase: number }> = [];
   private readonly tmpColor = new THREE.Color();
 
   constructor() {
@@ -168,6 +179,27 @@ export class Cityscape {
     this.buildWindows(blocks);
     this.buildVegetation(blocks);
     this.buildWatercraft();
+    // 行人：城市两岸（避开楼栋）+ 桥面人行道；真实人体（皮肤/衣物分组 + 服装/肤色随机）
+    const human = buildHumanoid();
+    const avoid = (x: number, z: number) =>
+      blocks.some(b => Math.abs(x - b.x) < b.w / 2 + 2 && Math.abs(z - b.z) < b.d / 2 + 2);
+    [-1, 1].forEach(side => {
+      const sys = new PedestrianSystem(human, {
+        area: { x0: side * (SHORE_X + 150), x1: side * (LAND_END - 30), z0: -385, z1: 385, y: GROUND_Y + 0.25 },
+        count: 240, avoid, speed: [0.6, 1.7], scale: [0.92, 1.12],
+      });
+      this.cityPeds.push(sys);
+      this.root.add(sys.group);
+    });
+    [-1, 1].forEach(zSide => {
+      const sys = new PedestrianSystem(human, {
+        area: { x0: -400, x1: 400, z0: zSide * 22, z1: zSide * 22, y: GEO.deckY + 0.1 },
+        count: 26, axis: 'x', speed: [0.5, 1.4], scale: [0.92, 1.1],
+      });
+      this.deckPeds.push(sys);
+      this.root.add(sys.group);
+    });
+    this.buildRowingBoats();
     this.setDayFactor(0);
   }
 
@@ -493,26 +525,118 @@ export class Cityscape {
     this.boatCabin = cabin;
   }
 
-  /** 每帧推进船只沿桥轴漂移，越界后从对侧循环并随机重置航道 / 速度 */
+  /** 每帧推进船只、划船小船与行人 */
   update(dt: number): void {
-    if (!this.boatHull || !this.boatCabin) return;
+    // 货轮沿桥轴漂移，越界后从对侧循环并随机重置航道 / 速度
+    if (this.boatHull && this.boatCabin) {
+      const m = new THREE.Matrix4();
+      const p = new THREE.Vector3();
+      const q = new THREE.Quaternion();
+      const s = new THREE.Vector3(1, 1, 1);
+      const Y = new THREE.Vector3(0, 1, 0);
+      this.boatData.forEach((b, i) => {
+        b.x += b.dir * b.speed * dt;
+        if (b.dir > 0 && b.x > 1150) { b.x = -1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
+        else if (b.dir < 0 && b.x < -1150) { b.x = 1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
+        p.set(b.x, GEO.waterY + 2.5, b.z);
+        q.setFromAxisAngle(Y, b.dir > 0 ? 0 : Math.PI);
+        m.compose(p, q, s);
+        this.boatHull!.setMatrixAt(i, m);
+        this.boatCabin!.setMatrixAt(i, m);
+      });
+      this.boatHull!.instanceMatrix.needsUpdate = true;
+      this.boatCabin!.instanceMatrix.needsUpdate = true;
+    }
+    this.updateRowingBoats(dt);
+    this.cityPeds.forEach(p => p.update(dt));
+    this.deckPeds.forEach(p => p.update(dt));
+  }
+
+  /** 江面划船小船：每艘含船体 + 坐姿划手（皮肤/衣物分组）+ 双桨，逐帧漂移并划桨 */
+  private buildRowingBoats(): void {
+    const N = 7;
+    const seated = buildSeatedPerson();
+    const hullGeo = new THREE.BoxGeometry(7, 1.4, 2.6);
+    const rowerSkin = new THREE.InstancedMesh(seated.skin, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0 }), N);
+    const rowerCloth = new THREE.InstancedMesh(seated.cloth, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 }), N);
+    const hull = new THREE.InstancedMesh(hullGeo, this.hullMat, N);
+    // 双桨：分别向 ±Z 伸出，绕船体 X 轴摆动模拟划水
+    const oarA = new THREE.InstancedMesh(new THREE.BoxGeometry(0.08, 0.08, 2.8).translate(0, 0, 1.4), new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.8, metalness: 0 }), N);
+    const oarB = new THREE.InstancedMesh(new THREE.BoxGeometry(0.08, 0.08, 2.8).translate(0, 0, -1.4), new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.8, metalness: 0 }), N);
     const m = new THREE.Matrix4();
     const p = new THREE.Vector3();
     const q = new THREE.Quaternion();
     const s = new THREE.Vector3(1, 1, 1);
     const Y = new THREE.Vector3(0, 1, 0);
-    this.boatData.forEach((b, i) => {
+    const skinCol = new THREE.Color();
+    const clothCol = new THREE.Color();
+    const rowerM = new THREE.Matrix4();
+    const tScale = new THREE.Matrix4().makeScale(0.95, 0.95, 0.95);
+    const tSeat = new THREE.Matrix4().makeTranslation(0, 0.5, 0);
+    for (let i = 0; i < N; i++) {
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const x = rand(-1000, 1000);
+      const z = rand(-260, 260);
+      const speed = rand(1.2, 2.6);
+      this.rowData.push({ x, z, dir, speed, len: 7, rowPhase: Math.random() * Math.PI * 2 });
+      p.set(x, GEO.waterY + 0.5, z);
+      q.setFromAxisAngle(Y, dir > 0 ? 0 : Math.PI);
+      m.compose(p, q, s);
+      hull.setMatrixAt(i, m);
+      rowerM.copy(m).multiply(tSeat).multiply(tScale);
+      rowerSkin.setMatrixAt(i, rowerM);
+      rowerCloth.setMatrixAt(i, rowerM);
+      clothCol.setHSL(0.02 + Math.random() * 0.95, 0.25 + Math.random() * 0.35, 0.32 + Math.random() * 0.28);
+      skinCol.setHSL(0.07 + Math.random() * 0.04, 0.35 + Math.random() * 0.2, 0.45 + Math.random() * 0.2);
+      rowerCloth.setColorAt(i, clothCol);
+      rowerSkin.setColorAt(i, skinCol);
+      oarA.setMatrixAt(i, m);
+      oarB.setMatrixAt(i, m);
+    }
+    [hull, rowerSkin, rowerCloth, oarA, oarB].forEach(mesh => { mesh.frustumCulled = false; this.root.add(mesh); });
+    if (rowerSkin.instanceColor) rowerSkin.instanceColor.needsUpdate = true;
+    if (rowerCloth.instanceColor) rowerCloth.instanceColor.needsUpdate = true;
+    this.rowHull = hull; this.rowRowerSkin = rowerSkin; this.rowRowerCloth = rowerCloth;
+    this.rowOarA = oarA; this.rowOarB = oarB;
+  }
+
+  /** 划船小船逐帧：漂移 + 划手随船 + 双桨绕船体 X 轴摆动 */
+  private updateRowingBoats(dt: number): void {
+    if (!this.rowHull) return;
+    const m = new THREE.Matrix4();
+    const p = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const s = new THREE.Vector3(1, 1, 1);
+    const Y = new THREE.Vector3(0, 1, 0);
+    const Xr = new THREE.Matrix4();
+    const local = new THREE.Matrix4();
+    const rowerM = new THREE.Matrix4();
+    const tSeat = new THREE.Matrix4().makeTranslation(0, 0.5, 0);
+    const tScale = new THREE.Matrix4().makeScale(0.95, 0.95, 0.95);
+    this.rowData.forEach((b, i) => {
       b.x += b.dir * b.speed * dt;
-      if (b.dir > 0 && b.x > 1150) { b.x = -1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
-      else if (b.dir < 0 && b.x < -1150) { b.x = 1150; b.z = rand(-300, 300); b.speed = rand(3, 7); b.dir = Math.random() < 0.5 ? 1 : -1; }
-      p.set(b.x, GEO.waterY + 2.5, b.z);
+      if (b.dir > 0 && b.x > 1100) { b.x = -1100; b.z = rand(-260, 260); b.speed = rand(1.2, 2.6); b.dir = Math.random() < 0.5 ? 1 : -1; }
+      else if (b.dir < 0 && b.x < -1100) { b.x = 1100; b.z = rand(-260, 260); b.speed = rand(1.2, 2.6); b.dir = Math.random() < 0.5 ? 1 : -1; }
+      b.rowPhase += dt * 2.4;
+      p.set(b.x, GEO.waterY + 0.5, b.z);
       q.setFromAxisAngle(Y, b.dir > 0 ? 0 : Math.PI);
       m.compose(p, q, s);
-      this.boatHull!.setMatrixAt(i, m);
-      this.boatCabin!.setMatrixAt(i, m);
+      this.rowHull!.setMatrixAt(i, m);
+      rowerM.copy(m).multiply(tSeat).multiply(tScale);
+      this.rowRowerSkin!.setMatrixAt(i, rowerM);
+      this.rowRowerCloth!.setMatrixAt(i, rowerM);
+      const ang = Math.sin(b.rowPhase) * 0.5;
+      Xr.makeRotationX(ang);
+      local.makeTranslation(0, 0.9, 1.3).multiply(Xr);
+      this.rowOarA!.setMatrixAt(i, m.clone().multiply(local));
+      local.makeTranslation(0, 0.9, -1.3).multiply(Xr);
+      this.rowOarB!.setMatrixAt(i, m.clone().multiply(local));
     });
-    this.boatHull.instanceMatrix.needsUpdate = true;
-    this.boatCabin.instanceMatrix.needsUpdate = true;
+    this.rowHull!.instanceMatrix.needsUpdate = true;
+    this.rowRowerSkin!.instanceMatrix.needsUpdate = true;
+    this.rowRowerCloth!.instanceMatrix.needsUpdate = true;
+    this.rowOarA!.instanceMatrix.needsUpdate = true;
+    this.rowOarB!.instanceMatrix.needsUpdate = true;
   }
 
   setDayFactor(f: number): void {

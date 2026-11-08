@@ -210,7 +210,9 @@ const LANES_PER_DIRECTION = GEO.laneOffsets.length / 2;
 export const LANES: Lane[] = GEO.laneOffsets.map((offset, i) => {
   const up = i < LANES_PER_DIRECTION;
   const no = up ? i + 1 : i - LANES_PER_DIRECTION + 1;
-  const xs = up ? [-420, -200, 0, 200, 420] : [420, 200, 0, -200, -420];
+  // 车道曲线向两岸城市延伸，车辆从城市驶上引桥过桥后再进入对岸城市，
+  // 不再在桥头凭空消失；wrap 发生在城市远端（被楼群 / 雾气遮挡）
+  const xs = up ? [-820, -420, -200, 0, 200, 420, 820] : [820, 420, 200, 0, -200, -420, -820];
   return {
     laneCode: up ? `LN-UP-${no}` : `LN-DN-${no}`,
     laneName: `${up ? '上行' : '下行'}${no}车道`,

@@ -158,7 +158,7 @@ export class SceneManager {
   private shadowCasters: THREE.Object3D[] = [];
   private shadowReceivers: THREE.Object3D[] = [];
   private shadowSolid = 0;
-  private shadowMapSize = 2048;
+  private shadowMapSize = 3072;
   private bloomScale = 1;
 
   constructor(private readonly container: HTMLElement) {
@@ -290,7 +290,7 @@ export class SceneManager {
     this.sun.target.position.set(0, GEO.deckY, 0);
     this.sun.castShadow = true;
     const sh = this.sun.shadow;
-    sh.mapSize.set(2048, 2048);
+    sh.mapSize.set(3072, 3072);
     sh.camera.left = -560;
     sh.camera.right = 560;
     sh.camera.top = 360;

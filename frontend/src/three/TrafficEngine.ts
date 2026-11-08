@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLORS, GEO } from '../config';
+import { COLORS } from '../config';
 import type { Lane, VehicleState } from '../types';
 import type { VehicleModel } from './AssetLoader';
 
@@ -9,7 +9,7 @@ interface VehicleRuntime extends VehicleState {
   correctLeft?: number;
 }
 
-const MAX = 128;
+const MAX = 256;
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 const _m = new THREE.Matrix4();
 const _p = new THREE.Vector3();
@@ -80,6 +80,7 @@ function falloffTexture(): THREE.CanvasTexture {
 export class TrafficEngine {
   readonly root = new THREE.Group();
   private curves = new Map<string, THREE.CatmullRomCurve3>();
+  private curveLengths = new Map<string, number>();
   private readonly upLanes = new Set<string>();
   private vehicleMeshes: THREE.InstancedMesh[] = [];
   private trailMesh: THREE.InstancedMesh;
@@ -105,6 +106,7 @@ export class TrafficEngine {
       const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
       curve.arcLengthDivisions = 2000;
       this.curves.set(lane.laneCode, curve);
+      this.curveLengths.set(lane.laneCode, curve.getLength());
     });
 
     const models = parts?.vehicleModels ?? [];
@@ -262,7 +264,7 @@ export class TrafficEngine {
       const v = this.vehicles[i];
       const curve = this.curves.get(v.lane);
       if (!curve) continue;
-      v.t += (v.speed / 3.6 / GEO.length) * dt;
+      v.t += (v.speed / 3.6 / this.curveLengths.get(v.lane)!) * dt;
       // 纠偏仅在稀疏报文到达后的 0.45s 内生效；此前 targetT 从不清空，
       // 会把车持续往一秒前的旧位置回拉，造成顿挫、聚集和前后重叠。
       if (v.correctT !== undefined && (v.correctLeft ?? 0) > 0) {
